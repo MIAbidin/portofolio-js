@@ -2,110 +2,58 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Message from '@/models/Message';
 
-/**
- * GET /api/messages/[id]
- * Fetch a single message by ID
- */
+// GET /api/messages/[id]
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
-    
-    const message = await Message.findById(params.id).lean();
-    
-    if (!message) {
-      return NextResponse.json(
-        { success: false, error: 'Message not found' },
-        { status: 404 }
-      );
-    }
-    
+    const { id } = await params;
+    const message = await Message.findById(id).lean();
+    if (!message) return NextResponse.json({ success: false, error: 'Message not found' }, { status: 404 });
     return NextResponse.json({ success: true, data: message });
   } catch (error: any) {
-    console.error('GET /api/messages/[id] error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch message', message: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Failed to fetch message' }, { status: 500 });
   }
 }
 
-/**
- * PATCH /api/messages/[id]
- * Update message (primarily for marking as read/unread)
- */
+// PATCH /api/messages/[id] — mark read/unread
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
-    
-    const body = await request.json();
-    const { isRead } = body;
-    
-    // Find existing message
-    const existingMessage = await Message.findById(params.id);
-    
-    if (!existingMessage) {
-      return NextResponse.json(
-        { success: false, error: 'Message not found' },
-        { status: 404 }
-      );
+    const { id }  = await params;
+    const { isRead } = await request.json();
+
+    const message = await Message.findById(id);
+    if (!message) return NextResponse.json({ success: false, error: 'Message not found' }, { status: 404 });
+
+    if (isRead !== undefined) {
+      message.isRead = isRead;
+      await message.save();
     }
 
-    // Update only isRead field
-    if (isRead !== undefined) {
-      existingMessage.isRead = isRead;
-      await existingMessage.save();
-    }
-    
-    return NextResponse.json({ 
-      success: true, 
-      message: `Message marked as ${isRead ? 'read' : 'unread'}`,
-      data: existingMessage 
-    });
+    return NextResponse.json({ success: true, data: message });
   } catch (error: any) {
-    console.error('PATCH /api/messages/[id] error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to update message', message: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Failed to update message' }, { status: 500 });
   }
 }
 
-/**
- * DELETE /api/messages/[id]
- * Delete a message
- */
+// DELETE /api/messages/[id]
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
-    
-    const message = await Message.findByIdAndDelete(params.id);
-    
-    if (!message) {
-      return NextResponse.json(
-        { success: false, error: 'Message not found' },
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Message deleted successfully',
-      data: message
-    });
+    const { id } = await params;
+    const message = await Message.findByIdAndDelete(id);
+    if (!message) return NextResponse.json({ success: false, error: 'Message not found' }, { status: 404 });
+    return NextResponse.json({ success: true, data: message });
   } catch (error: any) {
-    console.error('DELETE /api/messages/[id] error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete message', message: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Failed to delete message' }, { status: 500 });
   }
 }

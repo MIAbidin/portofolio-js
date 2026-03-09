@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/components/ThemeProvider';
+import LangPickerModal, { type DownloadTarget } from '@/components/LangPickerModal';
 
 // ── Types ──────────────────────────────────────────────
 interface Project { _id: string; title: string; slug: string; techStack: string[]; githubUrl?: string; demoUrl?: string; isFeatured: boolean; imagePath: string; shortDescription?: string; }
@@ -14,7 +15,7 @@ interface Settings { [key: string]: string; }
 const DEFAULT_SETTINGS: Settings = {
   hero_title: 'Loading...',
   hero_subtitle: 'Initializing system...',
-  about_title: 'Tentang',
+  about_title: 'About',
   about_text: '...',
   brand_initials: 'SYS',
   brand_suffix: '.INIT'
@@ -23,7 +24,6 @@ const DEFAULT_SETTINGS: Settings = {
 const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
 
 export default function HomePage() {
-  // ── Context (tema & game dari ThemeProvider) ────────
   const { isLight, gameUnlocked, setGameUnlocked } = useTheme();
 
   // ── Data States ─────────────────────────────────────
@@ -32,6 +32,7 @@ export default function HomePage() {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [education, setEducation] = useState<Experience | null>(null);
 
   // ── UI States ────────────────────────────────────────
   const [typedText, setTypedText] = useState('');
@@ -56,6 +57,9 @@ export default function HomePage() {
   const [logoClicks, setLogoClicks] = useState(0);
   const [globalBuffer, setGlobalBuffer] = useState('');
 
+  // ── Lang Picker ──────────────────────────────────────
+  const [downloadTarget, setDownloadTarget] = useState<DownloadTarget>(null);
+
   const termBodyRef = useRef<HTMLDivElement>(null);
   const termInputRef = useRef<HTMLInputElement>(null);
   const matrixRef = useRef<HTMLCanvasElement>(null);
@@ -67,19 +71,17 @@ export default function HomePage() {
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        const [projRes, skillRes, expRes, setRes] = await Promise.all([
+        const [projRes, skillRes, expRes, eduRes, setRes] = await Promise.all([
           fetch('/api/projects?featured=true').then(r => r.json()),
           fetch('/api/skills').then(r => r.json()),
-          fetch('/api/experiences').then(r => r.json()),
+          fetch('/api/experiences?type=work').then(r => r.json()),
+          fetch('/api/experiences?type=education&limit=1').then(r => r.json()),
           fetch('/api/settings').then(r => r.json()),
         ]);
-
-        console.log('📦 Projects Response:', projRes); // TAMBAHKAN INI
-        console.log('📊 Projects Data:', projRes.data);
-        
         if (projRes.data) setProjects(projRes.data);
         if (skillRes.data) setSkills(skillRes.data);
         if (expRes.data) setExperiences(expRes.data);
+        if (eduRes.data?.[0]) setEducation(eduRes.data[0]);
         if (setRes.data) {
           const obj = setRes.data.reduce((acc: any, curr: any) => ({ ...acc, [curr.key]: curr.value }), {});
           setSettings(prev => ({ ...prev, ...obj }));
@@ -93,7 +95,7 @@ export default function HomePage() {
     fetchAllData();
   }, []);
 
-  // ── Terminal Awal ───────────────────────────────────
+  // ── Terminal Init ───────────────────────────────────
   useEffect(() => {
     if (!isDataLoaded) return;
     setTermLines([
@@ -138,7 +140,7 @@ export default function HomePage() {
 
   // ── Typing Effect ───────────────────────────────────
   useEffect(() => {
-    const phrases = ['Full Stack Developer', 'Problem Solver', 'AI Engineer Enthusiast', 'Easter Egg Hunter 🥚'];
+    const phrases = ['Full Stack Developer', 'IT Support Specialist', 'AI Engineer Enthusiast', 'Easter Egg Hunter 🥚'];
     let pi = 0, ci = 0, deleting = false;
     const tick = () => {
       const cur = phrases[pi];
@@ -274,10 +276,9 @@ export default function HomePage() {
   };
 
   const unlockGame = () => {
-    // setGameUnlocked dari ThemeProvider sudah handle localStorage
     setGameUnlocked(true);
     setShowUnlock(true);
-    spawnConfetti();
+    setTimeout(() => spawnConfetti(), 50);
   };
 
   const spawnConfetti = () => {
@@ -321,6 +322,9 @@ export default function HomePage() {
 
   return (
     <>
+      {/* Language Picker Modal */}
+      <LangPickerModal target={downloadTarget} onClose={() => setDownloadTarget(null)} />
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500&family=Outfit:wght@300;400;500;600&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -328,12 +332,11 @@ export default function HomePage() {
         body { background: ${bg}; color: ${textPri}; overflow-x: hidden; transition: background 0.4s, color 0.4s; }
         body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(${t?'rgba(0,140,180,0.06)':'rgba(0,217,255,0.04)'} 1px,transparent 1px),linear-gradient(90deg,${t?'rgba(0,140,180,0.06)':'rgba(0,217,255,0.04)'} 1px,transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
 
-        /* Utilities */
         .section-tag { font-family:'DM Mono',monospace; font-size:0.7rem; letter-spacing:0.2em; text-transform:uppercase; color:${cyber}; display:flex; align-items:center; gap:8px; }
         .section-tag::before { content:''; width:24px; height:1px; background:${cyber}; }
-        .btn-primary { display:inline-flex; align-items:center; gap:8px; padding:10px 24px; background:linear-gradient(135deg,rgba(0,217,255,0.13),rgba(124,58,237,0.13)); border:1px solid ${cyber}; color:${cyber}; font-family:'DM Mono',monospace; font-size:0.8rem; letter-spacing:0.1em; text-transform:uppercase; transition:all 0.3s; cursor:pointer; text-decoration:none; white-space:nowrap; }
+        .btn-primary { display:inline-flex; align-items:center; gap:8px; padding:10px 24px; background:linear-gradient(135deg,rgba(0,217,255,0.13),rgba(124,58,237,0.13)); border:1px solid ${cyber}; color:${cyber}; font-family:'DM Mono',monospace; font-size:0.8rem; letter-spacing:0.1em; text-transform:uppercase; transition:all 0.3s; cursor:pointer; text-decoration:none; white-space:nowrap; background-color:transparent; }
         .btn-primary:hover { background:${cyber}; color:#0a0e27; box-shadow:0 0 30px ${cyber}40; }
-        .btn-ghost { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border:1px solid rgba(124,58,237,0.4); background:rgba(124,58,237,0.05); color:${purple}; font-family:'DM Mono',monospace; font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; transition:all 0.3s; text-decoration:none; white-space:nowrap; }
+        .btn-ghost { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border:1px solid rgba(124,58,237,0.4); background:rgba(124,58,237,0.05); color:${purple}; font-family:'DM Mono',monospace; font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; transition:all 0.3s; text-decoration:none; white-space:nowrap; cursor:pointer; background-color:transparent; }
         .btn-ghost:hover { border-color:${purple}; background:rgba(124,58,237,0.12); }
         .btn-muted { display:inline-flex; align-items:center; gap:8px; padding:10px 24px; border:1px solid ${t?'#cbd5e1':'#334155'}; color:${textSec}; font-family:'DM Mono',monospace; font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; transition:all 0.3s; text-decoration:none; white-space:nowrap; }
         .btn-muted:hover { border-color:rgba(0,217,255,0.5); color:#fff; }
@@ -341,7 +344,6 @@ export default function HomePage() {
         .card:hover { border-color:${t?'rgba(0,140,180,0.5)':'rgba(0,217,255,0.4)'}; transform:translateY(-4px); box-shadow:0 20px 40px rgba(0,0,0,0.4),0 0 20px ${cyber}1a; }
         .cursor-blink { display:inline-block; width:2px; height:1.1em; background:${cyber}; margin-left:2px; vertical-align:text-bottom; animation:blink 1s step-end infinite; }
 
-        /* Terminal colours */
         .term-cyber { color:${cyber}; }
         .term-error { color:#f87171; }
         .term-success { color:#34d399; }
@@ -355,7 +357,6 @@ export default function HomePage() {
         #term-body::-webkit-scrollbar { width:4px; }
         #term-body::-webkit-scrollbar-thumb { background:rgba(0,217,255,0.3); }
 
-        /* Keyframes */
         @keyframes blink { 0%,100%{opacity:1}50%{opacity:0} }
         @keyframes float { 0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)} }
         @keyframes scanLine { 0%{top:-2px}100%{top:100%} }
@@ -367,73 +368,45 @@ export default function HomePage() {
         @keyframes fadein { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none} }
         @keyframes gameNavGlow { from{text-shadow:0 0 6px ${cyber}}to{text-shadow:0 0 20px ${purple}} }
 
-        /* Decorative animation classes */
         .animate-float { animation:float 6s ease-in-out infinite; }
         .animate-float-delay { animation:float 6s ease-in-out infinite; animation-delay:1s; }
         .jumpscare-shake { animation:jumpscareShake 0.1s infinite; }
         .flicker { animation:flickerText 0.15s infinite; }
-        .game-glow { animation:gameNavGlow 2s ease-in-out infinite alternate; }
 
-        /* ── Responsive Layout ── */
-
-        /* Section padding */
         .section-pad { padding: clamp(48px, 10vh, 96px) clamp(16px, 5vw, 48px); }
-
-        /* Hero grid */
         .hero-grid { display:grid; grid-template-columns:1fr; gap:clamp(32px,8vw,64px); align-items:center; }
         @media (min-width:1024px) { .hero-grid { grid-template-columns:1fr 1fr; } }
-
-        /* About grid */
         .about-grid { display:grid; grid-template-columns:1fr; gap:clamp(24px,5vw,40px); align-items:start; }
         @media (min-width:1024px) { .about-grid { grid-template-columns:3fr 2fr; } }
-
-        /* Projects grid */
         .projects-grid { display:grid; grid-template-columns:1fr; gap:clamp(14px,3vw,20px); }
         @media (min-width:640px) { .projects-grid { grid-template-columns:repeat(2,1fr); } }
         @media (min-width:1024px) { .projects-grid { grid-template-columns:repeat(3,1fr); } }
-
-        /* Skills grid */
         .skills-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:clamp(8px,2vw,12px); }
         @media (min-width:480px) { .skills-grid { grid-template-columns:repeat(3,1fr); } }
         @media (min-width:768px) { .skills-grid { grid-template-columns:repeat(4,1fr); } }
         @media (min-width:1024px) { .skills-grid { grid-template-columns:repeat(6,1fr); } }
-
-        /* Stats grid */
         .stats-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:clamp(8px,2vw,12px); }
         @media (min-width:640px) { .stats-grid { grid-template-columns:repeat(4,1fr); } }
-
-        /* Hide terminal on mobile */
         @media (max-width:1023px) { #terminal-container { display:none !important; } }
-
-        /* Hero headings */
         .hero-h1 { font-family:'Syne',sans-serif; font-weight:800; font-size:clamp(2rem,7vw,4rem); line-height:1; letter-spacing:-0.02em; color:${t?'#0f172a':'#fff'}; margin-bottom:clamp(10px,2.5vw,16px); }
         .hero-typed { font-family:'DM Mono',monospace; font-size:clamp(1rem,3vw,1.5rem); color:${cyber}; margin-bottom:clamp(12px,3vw,24px); height:clamp(28px,5vw,40px); display:flex; align-items:center; }
         .hero-sub { color:${textSec}; font-size:clamp(14px,2.5vw,18px); line-height:1.7; margin-bottom:clamp(20px,5vw,32px); max-width:512px; }
         .hero-actions { display:flex; flex-wrap:wrap; gap:clamp(8px,2vw,16px); align-items:center; }
-
-        /* Section headings */
         .section-h2 { font-family:'Syne',sans-serif; font-size:clamp(1.5rem,4vw,2.5rem); font-weight:700; color:${t?'#0f172a':'#fff'}; }
-
-        /* Timeline */
         .timeline-wrap { position:relative; padding-left:clamp(16px,4vw,32px); }
         .timeline-line { position:absolute; left:0; top:0; bottom:0; width:1px; background:linear-gradient(to bottom,transparent,rgba(0,217,255,0.25),rgba(124,58,237,0.25),transparent); }
         .timeline-dot-wrap { position:absolute; left:clamp(-26px,-4.5vw,-26px); top:20px; display:flex; align-items:center; justify-content:center; }
         @media (max-width:639px) { .timeline-wrap { padding-left:0; } .timeline-line { display:none; } .timeline-dot-wrap { display:none; } }
-
-        /* Profile JSON card */
         .profile-card { display:block; }
         @media (max-width:1023px) { .profile-card { display:none; } }
-
-        /* CTA */
         .cta-wrap { max-width:768px; margin:0 auto; text-align:center; padding:0 clamp(16px,5vw,24px); }
       `}</style>
 
-      {/* Cursor Trail (desktop) */}
       {trailDots.map(dot => (
-        <div key={dot.id} style={{ position:'fixed', left:dot.x, top:dot.y, width:4, height:4, borderRadius:'50%', background:'rgba(0,217,255,0.4)', pointerEvents:'none', zIndex:9999, transform:'translate(-50%,-50%)', opacity:0, transition:'all 0.6s ease' }} />
+        <div key={dot.id} style={{ position:'fixed', left:dot.x, top:dot.y, width:4, height:4, borderRadius:'50%', background:'rgba(0,217,255,0.4)', pointerEvents:'none', zIndex:9999, transform:'translate(-50%,-50%)', opacity:0.6, transition:'opacity 0.6s ease' }} />
       ))}
 
-      {/* ── JUMPSCARE ── */}
+      {/* JUMPSCARE */}
       <AnimatePresence>
         {showJumpscare && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
@@ -448,7 +421,7 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      {/* ── MATRIX ── */}
+      {/* MATRIX */}
       <AnimatePresence>
         {showMatrix && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
@@ -460,7 +433,7 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      {/* ── PUZZLE ── */}
+      {/* PUZZLE */}
       <AnimatePresence>
         {showPuzzle && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
@@ -489,7 +462,7 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      {/* ── UNLOCK ── */}
+      {/* UNLOCK */}
       <AnimatePresence>
         {showUnlock && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
@@ -509,7 +482,7 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      {/* ── TOAST ── */}
+      {/* TOAST */}
       <AnimatePresence>
         {toast && (
           <motion.div initial={{ x:120, opacity:0 }} animate={{ x:0, opacity:1 }} exit={{ x:120, opacity:0 }}
@@ -522,19 +495,9 @@ export default function HomePage() {
       <div style={{ position:'relative', minHeight:'100vh', zIndex:1 }}>
 
         {/* ══════════ HERO ══════════ */}
-        <section style={{ 
-          position:'relative', 
-          minHeight:'100vh', 
-          display:'flex', 
-          alignItems:'center', 
-          justifyContent:'center', 
-          overflow:'hidden', 
-          padding:'15px clamp(16px,5vw,48px) clamp(40px,8vh,64px)' 
-        }}>
-          {/* Glows */}
+        <section style={{ position:'relative', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', padding:'15px clamp(16px,5vw,48px) clamp(40px,8vh,64px)' }}>
           <div style={{ position:'absolute', top:'25%', left:'25%', width:'clamp(200px,40vw,384px)', height:'clamp(200px,40vw,384px)', background:'rgba(0,217,255,0.05)', borderRadius:'50%', filter:'blur(60px)', pointerEvents:'none' }} />
           <div style={{ position:'absolute', bottom:'25%', right:'25%', width:'clamp(160px,30vw,320px)', height:'clamp(160px,30vw,320px)', background:'rgba(124,58,237,0.08)', borderRadius:'50%', filter:'blur(60px)', pointerEvents:'none' }} />
-          {/* Scan line */}
           <div style={{ position:'absolute', inset:0, overflow:'hidden', pointerEvents:'none', opacity:0.2 }}>
             <div style={{ position:'absolute', width:'100%', height:1, background:`linear-gradient(90deg,transparent,${cyber},transparent)`, animation:'scanLine 4s linear infinite' }} />
           </div>
@@ -558,15 +521,25 @@ export default function HomePage() {
                 <p className="hero-sub">{s.hero_subtitle}</p>
 
                 <div className="hero-actions">
-                  <a href="/api/cv/download" className="btn-primary">
+                  {/* ↓ Download CV — opens lang picker */}
+                  <button
+                    onClick={() => setDownloadTarget('cv')}
+                    className="btn-primary"
+                  >
                     <svg width={14} height={14} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                     Download CV
-                  </a>
-                  <a href="/api/portfolio/download/pptx" className="btn-ghost">
+                  </button>
+
+                  {/* ↓ Portfolio PPT — opens lang picker */}
+                  <button
+                    onClick={() => setDownloadTarget('ppt')}
+                    className="btn-ghost"
+                  >
                     <svg width={13} height={13} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     Portfolio PPT
-                  </a>
-                  <a href="/portfolio" className="btn-muted">Lihat Portfolio →</a>
+                  </button>
+
+                  <a href="/portfolio" className="btn-muted">View Portfolio →</a>
                 </div>
               </motion.div>
 
@@ -608,17 +581,15 @@ export default function HomePage() {
             <div style={{ maxWidth:1280, margin:'0 auto' }}>
               <div style={{ marginBottom:'clamp(28px,6vh,56px)' }}>
                 <div className="section-tag" style={{ marginBottom:12 }}>About Me</div>
-                <h2 className="section-h2">{s.about_title} <span style={{ color:cyber }}>Saya</span></h2>
+                <h2 className="section-h2">About <span style={{ color:cyber }}>Me</span></h2>
               </div>
 
               <div className="about-grid">
-                {/* Left: text + stats + socials */}
                 <div style={{ display:'flex', flexDirection:'column', gap:'clamp(20px,4vw,28px)' }}>
                   <div style={{ color:textSec, lineHeight:1.7, fontSize:'clamp(14px,2.5vw,16px)' }}>
                     {s.about_text?.split('\n').filter(Boolean).map((p, i) => <p key={i} style={{ marginBottom:16 }}>{p}</p>)}
                   </div>
 
-                  {/* Contact links */}
                   <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                     {s.contact_email && (
                       <a href={`mailto:${s.contact_email}`} style={{ display:'inline-flex', alignItems:'center', gap:6, fontFamily:'DM Mono,monospace', fontSize:'clamp(10px,2vw,12px)', color:textSec, border:`1px solid ${t?'#cbd5e1':'#334155'}`, padding:'7px 12px', textDecoration:'none', transition:'color 0.3s' }}
@@ -639,7 +610,6 @@ export default function HomePage() {
                     )}
                   </div>
 
-                  {/* Socials */}
                   <div style={{ display:'flex', alignItems:'center', flexWrap:'wrap', gap:12 }}>
                     <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:textMut, textTransform:'uppercase', letterSpacing:'0.2em' }}>Find me on</span>
                     <div style={{ display:'flex', gap:8 }}>
@@ -654,7 +624,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Stats */}
                   <div className="stats-grid">
                     {[
                       { value:`${projects.length}+`, label:'Projects',  color:cyber,    bg:'rgba(0,217,255,0.05)',   border:'rgba(0,217,255,0.2)' },
@@ -672,7 +641,7 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Right: profile.json (hidden on mobile) */}
+                {/* Profile JSON card (desktop) */}
                 <div className="profile-card" style={{ position:'relative' }}>
                   <div className="animate-float-delay" style={{ position:'absolute', top:-20, right:-20, width:64, height:64, border:'1px solid rgba(0,217,255,0.15)', transform:'rotate(12deg)', pointerEvents:'none' }} />
                   <div className="animate-float" style={{ position:'absolute', bottom:-20, left:-20, width:40, height:40, border:'1px solid rgba(124,58,237,0.2)', transform:'rotate(-6deg)', pointerEvents:'none' }} />
@@ -685,12 +654,13 @@ export default function HomePage() {
                     <div style={{ padding:20, fontFamily:'DM Mono,monospace', fontSize:13 }}>
                       <div style={{ color:textMut, marginBottom:8 }}>{'{'}</div>
                       {[
-                        { k:'"name"',      v:`"${s.hero_title}"`,           c:'#fcd34d' },
-                        { k:'"education"', v:'"S1 Teknik Informatika"',      c:'#f9a8d4' },
-                        { k:'"university"',v:'"UMS"',                        c:textSec },
-                        { k:'"gpa"',       v:'3.83',                         c:green },
-                        { k:'"location"',  v:`"${s.contact_location||''}"`, c:t?'#334155':'#e2e8f0' },
-                        { k:'"available"', v:'true',                         c:green },
+
+                        { k:'"name"',       v:`"${s.hero_title}"`,                          c:'#fcd34d' },
+                        { k:'"education"',  v:`"${education?.title || 'S1 Informatics'}"`,  c:'#f9a8d4' },
+                        { k:'"university"', v:`"${education?.company || 'UMS'}"`,           c:textSec   },
+                        { k:'"gpa"',        v:'3.83',            c:green     },
+                        { k:'"location"',   v:`"${s.contact_location||''}"`,                c:t?'#334155':'#e2e8f0' },
+                        { k:'"available"',  v:'true',                                        c:green     },
                       ].map((line, i, arr) => (
                         <div key={i} style={{ display:'flex', gap:8, padding:'6px 0', borderBottom: i<arr.length-1?`1px solid ${t?'#e2e8f0':'rgba(51,65,85,0.2)'}`:undefined }}>
                           <span style={{ color:'rgba(0,217,255,0.6)', fontSize:11, flexShrink:0 }}>{line.k}:</span>
@@ -707,9 +677,13 @@ export default function HomePage() {
                         </span>
                         <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:green }}>Open to opportunities</span>
                       </div>
-                      <a href="/api/cv/download" style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:textMut, textDecoration:'none', transition:'color 0.3s' }}
+                      {/* CV link in profile card also triggers lang picker */}
+                      <button
+                        onClick={() => setDownloadTarget('cv')}
+                        style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:textMut, background:'none', border:'none', cursor:'pointer', transition:'color 0.3s', padding:0 }}
                         onMouseEnter={e=>(e.currentTarget as HTMLElement).style.color=cyber}
-                        onMouseLeave={e=>(e.currentTarget as HTMLElement).style.color=textMut}>↓ CV</a>
+                        onMouseLeave={e=>(e.currentTarget as HTMLElement).style.color=textMut}
+                      >↓ CV</button>
                     </div>
                   </div>
                 </div>
@@ -773,7 +747,6 @@ export default function HomePage() {
               </AnimatePresence>
             </div>
 
-            {/* Load more controls */}
             <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'center', marginTop:'clamp(28px,6vh,48px)', gap:12 }}>
               {visibleCount < projects.length && (
                 <button onClick={() => setVisibleCount(v => Math.min(v + perRow, projects.length))}
@@ -831,7 +804,6 @@ export default function HomePage() {
                   return (
                     <motion.div key={exp._id} initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} transition={{ delay:i*0.1 }}
                       style={{ position:'relative' }}>
-                      {/* Timeline dot */}
                       <div className="timeline-dot-wrap">
                         {isCurrent ? (
                           <span style={{ position:'relative', display:'inline-flex', width:12, height:12 }}>
@@ -881,7 +853,7 @@ export default function HomePage() {
           <motion.div initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="cta-wrap">
             <div className="section-tag" style={{ marginBottom:16, justifyContent:'center' }}>Let's Connect</div>
             <h2 className="section-h2" style={{ marginBottom:16 }}>Got a project in mind?</h2>
-            <p style={{ color:textSec, marginBottom:32, lineHeight:1.7, fontSize:'clamp(14px,3vw,16px)' }}>Mari diskusi dan wujudkan ide kamu menjadi solusi nyata.</p>
+            <p style={{ color:textSec, marginBottom:32, lineHeight:1.7, fontSize:'clamp(14px,3vw,16px)' }}>Let's discuss and turn your ideas into real solutions.</p>
             <a href="/contact" className="btn-primary" style={{ fontSize:'clamp(13px,2.5vw,15px)', padding:'12px 32px' }}>Start a Conversation</a>
           </motion.div>
         </section>

@@ -1,20 +1,25 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISetting extends Document {
-  key: string;
+  key:  string;
+  type: string;
+
+  // ── Primary (English) ── public pages + CV EN
   value: string;
-  type: 'text' | 'textarea' | 'url' | 'file';
-  createdAt: Date;
-  updatedAt: Date;
+
+  // ── Indonesian translation ── CV ID + CV Preview only
+  value_id?: string;
 }
 
 const SettingSchema = new Schema<ISetting>(
   {
-    key: { type: String, required: true, unique: true },
-    value: { type: String, required: true },
-    type: { type: String, enum: ['text', 'textarea', 'url', 'file'], default: 'text' },
+    key:      { type: String, required: true, unique: true },
+    type:     { type: String, default: 'text' },
+    value:    { type: String, required: true },
+    value_id: { type: String, default: '' },
   },
   { timestamps: true }
 );
 
-export default mongoose.models.Setting || mongoose.model<ISetting>('Setting', SettingSchema);
+export default mongoose.models.Setting ||
+  mongoose.model<ISetting>('Setting', SettingSchema);
