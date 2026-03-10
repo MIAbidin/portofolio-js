@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform, useInView } from 'framer-motion';
 import { useTheme } from '@/components/ThemeProvider';
 import LangPickerModal, { type DownloadTarget } from '@/components/LangPickerModal';
 
@@ -17,11 +17,50 @@ const DEFAULT_SETTINGS: Settings = {
   hero_subtitle: 'Initializing system...',
   about_title: 'About',
   about_text: '...',
-  brand_initials: 'SYS',
-  brand_suffix: '.INIT'
+  brand_initials: 'MIA',
+  brand_suffix: '.Dev'
 };
 
 const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+
+// ── Reusable animated section wrapper ──────────────────
+function RevealSection({ children, delay = 0, className = '', style = {} }: {
+  children: React.ReactNode; delay?: number; className?: string; style?: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: '-80px' });
+  return (
+    <div ref={ref} className={className} style={{
+      ...style,
+      opacity: isInView ? 1 : 0,
+      transform: isInView ? 'none' : 'translateY(32px)',
+      transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ── Stagger children reveal ────────────────────────────
+function StaggerReveal({ children, staggerDelay = 0.08, className = '', style = {} }: {
+  children: React.ReactNode[]; staggerDelay?: number; className?: string; style?: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: '-60px' });
+  return (
+    <div ref={ref} className={className} style={style}>
+      {children.map((child, i) => (
+        <div key={i} style={{
+          opacity: isInView ? 1 : 0,
+          transform: isInView ? 'none' : 'translateY(24px)',
+          transition: `opacity 0.6s ease ${i * staggerDelay}s, transform 0.6s ease ${i * staggerDelay}s`,
+        }}>
+          {child}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { isLight, gameUnlocked, setGameUnlocked } = useTheme();
@@ -33,6 +72,16 @@ export default function HomePage() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [education, setEducation] = useState<Experience | null>(null);
+
+  const yearsExp = useMemo(() => {
+    if (!experiences.length) return '2+';
+    const earliest = experiences.reduce((min, exp) => {
+      const d = new Date(exp.startDate).getTime();
+      return d < min ? d : min;
+    }, Infinity);
+    const years = Math.floor((Date.now() - earliest) / (1000 * 60 * 60 * 24 * 365));
+    return years > 0 ? `${years}+` : '1+';
+  }, [experiences]);
 
   // ── UI States ────────────────────────────────────────
   const [typedText, setTypedText] = useState('');
@@ -56,6 +105,7 @@ export default function HomePage() {
   const [trailDots, setTrailDots] = useState<{ x: number; y: number; id: number }[]>([]);
   const [logoClicks, setLogoClicks] = useState(0);
   const [globalBuffer, setGlobalBuffer] = useState('');
+  const [totalProjects, setTotalProjects] = useState(0);
 
   // ── Lang Picker ──────────────────────────────────────
   const [downloadTarget, setDownloadTarget] = useState<DownloadTarget>(null);
@@ -67,18 +117,26 @@ export default function HomePage() {
   const logoClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const trailIdRef = useRef(0);
 
+  // ── Parallax for hero (window-based, avoids ref hydration issue) ──
+  const { scrollY } = useScroll();
+  const heroBlobY   = useTransform(scrollY, [0, 600], [0, -80]);
+  const heroBlobY2  = useTransform(scrollY, [0, 600], [0, -50]);
+  const heroOpacity = useTransform(scrollY, [0, 400], [1, 0]);
+
   // ── Fetch Data ──────────────────────────────────────
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        const [projRes, skillRes, expRes, eduRes, setRes] = await Promise.all([
+        const [projRes, allProjRes, skillRes, expRes, eduRes, setRes] = await Promise.all([
           fetch('/api/projects?featured=true').then(r => r.json()),
+          fetch('/api/projects').then(r => r.json()),  
           fetch('/api/skills').then(r => r.json()),
           fetch('/api/experiences?type=work').then(r => r.json()),
           fetch('/api/experiences?type=education&limit=1').then(r => r.json()),
           fetch('/api/settings').then(r => r.json()),
         ]);
         if (projRes.data) setProjects(projRes.data);
+        if (allProjRes.data) setTotalProjects(allProjRes.data.length);
         if (skillRes.data) setSkills(skillRes.data);
         if (expRes.data) setExperiences(expRes.data);
         if (eduRes.data?.[0]) setEducation(eduRes.data[0]);
@@ -99,7 +157,6 @@ export default function HomePage() {
   useEffect(() => {
     if (!isDataLoaded) return;
     setTermLines([
-      { text: '<span class="term-success">✓ Connected. Data loaded.</span>', type: '' },
       { text: '<span class="term-cyber">$</span> whoami', type: '' },
       { text: settings.hero_title || 'Operator', type: '' },
       { text: '<span class="term-cyber">$</span> cat skills.txt', type: '' },
@@ -320,6 +377,93 @@ export default function HomePage() {
   const visibleProjects = projects.slice(0, visibleCount);
   const perRow  = 3;
 
+  // ── Loading Screen ───────────────────────────────────
+  if (!isDataLoaded) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0,
+        background: '#0a0e27',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        zIndex: 99999,
+        fontFamily: 'DM Mono, monospace',
+      }}>
+        <style>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+          @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+          @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+          @keyframes logoGlow { 0%,100%{box-shadow:0 0 8px rgba(0,217,255,0.3)} 50%{box-shadow:0 0 24px rgba(0,217,255,0.7)} }
+          .boot-line { animation: fadeUp 0.4s ease-out forwards; opacity: 0; }
+        `}</style>
+
+        {/* ── Navbar-matching logo ── */}
+        <div style={{ marginBottom: 40, textAlign: 'center', animation: 'fadeUp 0.5s ease-out forwards' }}>
+          {/* Same logo mark as Navbar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 4 }}>
+            <div style={{
+              width: 38, height: 38,
+              border: '1px solid #00d9ff',
+              position: 'relative',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              animation: 'logoGlow 2s ease-in-out infinite',
+            }}>
+              <div style={{ width: 18, height: 18, background: '#00d9ff' }} />
+              {/* Corner accents — same as Navbar */}
+              <div style={{ position: 'absolute', top: -1, left: -1,   width: 9, height: 9, borderTop:    '1px solid #00d9ff', borderLeft:  '1px solid #00d9ff' }} />
+              <div style={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderBottom: '1px solid #00d9ff', borderRight: '1px solid #00d9ff' }} />
+            </div>
+            <span style={{
+              fontFamily: 'Syne, sans-serif',
+              fontWeight: 700,
+              fontSize: 24,
+              color: '#ffffff',
+              letterSpacing: '-0.02em',
+            }}>
+              {s.brand_initials || 'MIA'}<span style={{ color: '#00d9ff' }}>{s.brand_suffix || '.Dev'}</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Spinner */}
+        <div style={{
+          width: 40, height: 40,
+          border: '2px solid rgba(0,217,255,0.1)',
+          borderTop: '2px solid #00d9ff',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+          marginBottom: 32,
+        }} />
+
+        {/* Boot lines */}
+        <div style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {[
+            { text: '> Connecting to database...', delay: '0s',   color: '#475569' },
+            { text: '> Loading portfolio data...',  delay: '0.3s', color: '#475569' },
+            { text: '> Initializing systems...',    delay: '0.6s', color: '#475569' },
+          ].map((line, i) => (
+            <div key={i} className="boot-line" style={{
+              fontSize: 12, color: line.color,
+              letterSpacing: '0.05em',
+              animationDelay: line.delay,
+            }}>
+              {line.text}
+            </div>
+          ))}
+          <div className="boot-line" style={{
+            fontSize: 12, color: '#00d9ff',
+            letterSpacing: '0.05em',
+            animationDelay: '0.9s',
+            animation: 'fadeUp 0.4s 0.9s ease-out forwards, pulse 1.5s 1.3s ease-in-out infinite',
+            opacity: 0,
+          }}>
+            {'> '}
+            <span style={{ animation: 'pulse 1s ease-in-out infinite' }}>▋</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Language Picker Modal */}
@@ -367,6 +511,7 @@ export default function HomePage() {
         @keyframes ping { 0%{transform:scale(1);opacity:1}75%,100%{transform:scale(2);opacity:0} }
         @keyframes fadein { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none} }
         @keyframes gameNavGlow { from{text-shadow:0 0 6px ${cyber}}to{text-shadow:0 0 20px ${purple}} }
+        @keyframes sectionLineGrow { from{width:0} to{width:100%} }
 
         .animate-float { animation:float 6s ease-in-out infinite; }
         .animate-float-delay { animation:float 6s ease-in-out infinite; animation-delay:1s; }
@@ -400,7 +545,18 @@ export default function HomePage() {
         .profile-card { display:block; }
         @media (max-width:1023px) { .profile-card { display:none; } }
         .cta-wrap { max-width:768px; margin:0 auto; text-align:center; padding:0 clamp(16px,5vw,24px); }
+
+        /* ── Scroll progress bar ── */
+        #scroll-progress {
+          position: fixed; top: 64px; left: 0; height: 2px; z-index: 49;
+          background: linear-gradient(90deg, ${cyber}, ${purple});
+          transform-origin: left;
+          transition: transform 0.1s linear;
+        }
       `}</style>
+
+      {/* ── Scroll progress bar ── */}
+      <ScrollProgressBar cyber={cyber} purple={purple} />
 
       {trailDots.map(dot => (
         <div key={dot.id} style={{ position:'fixed', left:dot.x, top:dot.y, width:4, height:4, borderRadius:'50%', background:'rgba(0,217,255,0.4)', pointerEvents:'none', zIndex:9999, transform:'translate(-50%,-50%)', opacity:0.6, transition:'opacity 0.6s ease' }} />
@@ -496,55 +652,58 @@ export default function HomePage() {
 
         {/* ══════════ HERO ══════════ */}
         <section style={{ position:'relative', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', padding:'15px clamp(16px,5vw,48px) clamp(40px,8vh,64px)' }}>
-          <div style={{ position:'absolute', top:'25%', left:'25%', width:'clamp(200px,40vw,384px)', height:'clamp(200px,40vw,384px)', background:'rgba(0,217,255,0.05)', borderRadius:'50%', filter:'blur(60px)', pointerEvents:'none' }} />
-          <div style={{ position:'absolute', bottom:'25%', right:'25%', width:'clamp(160px,30vw,320px)', height:'clamp(160px,30vw,320px)', background:'rgba(124,58,237,0.08)', borderRadius:'50%', filter:'blur(60px)', pointerEvents:'none' }} />
+          {/* Parallax blobs */}
+          <motion.div style={{ y: heroBlobY, position:'absolute', top:'25%', left:'25%', width:'clamp(200px,40vw,384px)', height:'clamp(200px,40vw,384px)', background:'rgba(0,217,255,0.05)', borderRadius:'50%', filter:'blur(60px)', pointerEvents:'none' }} />
+          <motion.div style={{ y: heroBlobY2, position:'absolute', bottom:'25%', right:'25%', width:'clamp(160px,30vw,320px)', height:'clamp(160px,30vw,320px)', background:'rgba(124,58,237,0.08)', borderRadius:'50%', filter:'blur(60px)', pointerEvents:'none' }} />
           <div style={{ position:'absolute', inset:0, overflow:'hidden', pointerEvents:'none', opacity:0.2 }}>
             <div style={{ position:'absolute', width:'100%', height:1, background:`linear-gradient(90deg,transparent,${cyber},transparent)`, animation:'scanLine 4s linear infinite' }} />
           </div>
 
           <div style={{ maxWidth:1280, margin:'0 auto', width:'100%' }}>
             <div className="hero-grid">
-              {/* Left */}
-              <motion.div initial={{ opacity:0, y:30 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.6 }}>
-                <div style={{ display:'inline-flex', alignItems:'center', gap:8, border:'1px solid rgba(16,185,129,0.3)', background:'rgba(16,185,129,0.05)', padding:'6px 12px', marginBottom:'clamp(16px,4vw,24px)', fontFamily:'DM Mono,monospace', fontSize:'clamp(10px,2.5vw,12px)', color:green }}>
-                  <span style={{ width:6, height:6, background:green, borderRadius:'50%', animation:'blink 1s step-end infinite' }} />
-                  AVAILABLE FOR HIRE
-                </div>
+              {/* Left — staggered children */}
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={{ hidden:{}, visible:{ transition:{ staggerChildren:0.12 } } }}
+              >
+                {/* Status badge */}
+                <motion.div variants={{ hidden:{opacity:0,y:20}, visible:{opacity:1,y:0} }}>
+                  <div style={{ display:'inline-flex', alignItems:'center', gap:8, border:'1px solid rgba(16,185,129,0.3)', background:'rgba(16,185,129,0.05)', padding:'6px 12px', marginBottom:'clamp(16px,4vw,24px)', fontFamily:'DM Mono,monospace', fontSize:'clamp(10px,2.5vw,12px)', color:green }}>
+                    <span style={{ width:6, height:6, background:green, borderRadius:'50%', animation:'blink 1s step-end infinite' }} />
+                    AVAILABLE FOR HIRE
+                  </div>
+                </motion.div>
 
-                <h1 className="hero-h1">{s.hero_title}</h1>
+                <motion.h1 className="hero-h1" variants={{ hidden:{opacity:0,y:24}, visible:{opacity:1,y:0} }}>
+                  {s.hero_title}
+                </motion.h1>
 
-                <div className="hero-typed">
+                <motion.div className="hero-typed" variants={{ hidden:{opacity:0,x:-16}, visible:{opacity:1,x:0} }}>
                   <span>{typedText}</span>
                   <span className="cursor-blink" />
-                </div>
+                </motion.div>
 
-                <p className="hero-sub">{s.hero_subtitle}</p>
+                <motion.p className="hero-sub" variants={{ hidden:{opacity:0,y:16}, visible:{opacity:1,y:0} }}>
+                  {s.hero_subtitle}
+                </motion.p>
 
-                <div className="hero-actions">
-                  {/* ↓ Download CV — opens lang picker */}
-                  <button
-                    onClick={() => setDownloadTarget('cv')}
-                    className="btn-primary"
-                  >
+                <motion.div className="hero-actions" variants={{ hidden:{opacity:0,y:16}, visible:{opacity:1,y:0} }}>
+                  <button onClick={() => setDownloadTarget('cv')} className="btn-primary">
                     <svg width={14} height={14} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                     Download CV
                   </button>
-
-                  {/* ↓ Portfolio PPT — opens lang picker */}
-                  <button
-                    onClick={() => setDownloadTarget('ppt')}
-                    className="btn-ghost"
-                  >
+                  <button onClick={() => setDownloadTarget('ppt')} className="btn-ghost">
                     <svg width={13} height={13} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     Portfolio PPT
                   </button>
-
                   <a href="/portfolio" className="btn-muted">View Portfolio →</a>
-                </div>
+                </motion.div>
               </motion.div>
 
               {/* Right: Terminal */}
-              <motion.div initial={{ opacity:0, x:40 }} animate={{ opacity:1, x:0 }} transition={{ duration:0.6, delay:0.2 }}
+              <motion.div
+                initial={{ opacity:0, x:40 }} animate={{ opacity:1, x:0 }} transition={{ duration:0.7, delay:0.3 }}
                 id="terminal-container" style={{ position:'relative' }}>
                 <div className="animate-float-delay" style={{ position:'absolute', top:-24, right:-24, width:96, height:96, border:'1px solid rgba(124,58,237,0.3)', transform:'rotate(12deg)', pointerEvents:'none' }} />
                 <div className="animate-float" style={{ position:'absolute', bottom:-16, left:-16, width:64, height:64, border:'1px solid rgba(0,217,255,0.3)', transform:'rotate(-6deg)', pointerEvents:'none' }} />
@@ -573,76 +732,90 @@ export default function HomePage() {
               </motion.div>
             </div>
           </div>
+
+          {/* Scroll hint */}
+          <motion.div style={{ opacity: heroOpacity, position:'absolute', bottom:32, left:'50%', transform:'translateX(-50%)', display:'flex', flexDirection:'column', alignItems:'center', gap:8 }}>
+            <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:textMut, letterSpacing:'0.15em' }}>SCROLL</span>
+            <div style={{ width:1, height:40, background:`linear-gradient(to bottom,${cyber},transparent)`, animation:'scanLine 1.5s ease-in-out infinite' }} />
+          </motion.div>
         </section>
 
         {/* ══════════ ABOUT ══════════ */}
         {s.about_text && (
           <section id="about" className="section-pad" style={{ background: t?'rgba(228,234,248,0.4)':'rgba(10,14,39,0.4)' }}>
             <div style={{ maxWidth:1280, margin:'0 auto' }}>
-              <div style={{ marginBottom:'clamp(28px,6vh,56px)' }}>
+              <RevealSection style={{ marginBottom:'clamp(28px,6vh,56px)' }}>
                 <div className="section-tag" style={{ marginBottom:12 }}>About Me</div>
                 <h2 className="section-h2">About <span style={{ color:cyber }}>Me</span></h2>
-              </div>
+              </RevealSection>
 
               <div className="about-grid">
                 <div style={{ display:'flex', flexDirection:'column', gap:'clamp(20px,4vw,28px)' }}>
-                  <div style={{ color:textSec, lineHeight:1.7, fontSize:'clamp(14px,2.5vw,16px)' }}>
+                  <RevealSection delay={0.1} style={{ color:textSec, lineHeight:1.7, fontSize:'clamp(14px,2.5vw,16px)' }}>
                     {s.about_text?.split('\n').filter(Boolean).map((p, i) => <p key={i} style={{ marginBottom:16 }}>{p}</p>)}
-                  </div>
+                  </RevealSection>
 
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-                    {s.contact_email && (
-                      <a href={`mailto:${s.contact_email}`} style={{ display:'inline-flex', alignItems:'center', gap:6, fontFamily:'DM Mono,monospace', fontSize:'clamp(10px,2vw,12px)', color:textSec, border:`1px solid ${t?'#cbd5e1':'#334155'}`, padding:'7px 12px', textDecoration:'none', transition:'color 0.3s' }}
-                        onMouseEnter={e=>(e.currentTarget as HTMLElement).style.color=cyber}
-                        onMouseLeave={e=>(e.currentTarget as HTMLElement).style.color=textSec}>
-                        ✉ {s.contact_email}
-                      </a>
-                    )}
-                    {s.contact_phone && (
-                      <a href={`tel:${s.contact_phone}`} style={{ display:'inline-flex', alignItems:'center', gap:6, fontFamily:'DM Mono,monospace', fontSize:'clamp(10px,2vw,12px)', color:textSec, border:`1px solid ${t?'#cbd5e1':'#334155'}`, padding:'7px 12px', textDecoration:'none' }}>
-                        📞 {s.contact_phone}
-                      </a>
-                    )}
-                    {s.contact_location && (
-                      <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontFamily:'DM Mono,monospace', fontSize:'clamp(10px,2vw,12px)', color:textMut, border:`1px solid ${t?'#e2e8f0':'rgba(51,65,85,0.5)'}`, padding:'7px 12px' }}>
-                        📍 {s.contact_location}
-                      </span>
-                    )}
-                  </div>
-
-                  <div style={{ display:'flex', alignItems:'center', flexWrap:'wrap', gap:12 }}>
-                    <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:textMut, textTransform:'uppercase', letterSpacing:'0.2em' }}>Find me on</span>
-                    <div style={{ display:'flex', gap:8 }}>
-                      {[{ url:s.social_github, label:'GitHub', icon:'⌥' },{ url:s.social_linkedin, label:'LinkedIn', icon:'in' },{ url:s.social_instagram, label:'Instagram', icon:'📷' }]
-                        .filter(x => x.url).map(x => (
-                        <a key={x.label} href={x.url} target="_blank" rel="noreferrer"
-                          style={{ width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${t?'#cbd5e1':'#334155'}`, color:textMut, fontSize:12, fontFamily:'DM Mono,monospace', transition:'all 0.3s', textDecoration:'none' }}
-                          onMouseEnter={e=>{ (e.currentTarget as HTMLElement).style.borderColor=cyber; (e.currentTarget as HTMLElement).style.color=cyber; }}
-                          onMouseLeave={e=>{ (e.currentTarget as HTMLElement).style.borderColor=t?'#cbd5e1':'#334155'; (e.currentTarget as HTMLElement).style.color=textMut; }}
-                          title={x.label}>{x.icon}</a>
-                      ))}
+                  <RevealSection delay={0.15}>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                      {s.contact_email && (
+                        <a href={`mailto:${s.contact_email}`} style={{ display:'inline-flex', alignItems:'center', gap:6, fontFamily:'DM Mono,monospace', fontSize:'clamp(10px,2vw,12px)', color:textSec, border:`1px solid ${t?'#cbd5e1':'#334155'}`, padding:'7px 12px', textDecoration:'none', transition:'color 0.3s' }}
+                          onMouseEnter={e=>(e.currentTarget as HTMLElement).style.color=cyber}
+                          onMouseLeave={e=>(e.currentTarget as HTMLElement).style.color=textSec}>
+                          ✉ {s.contact_email}
+                        </a>
+                      )}
+                      {s.contact_phone && (
+                        <a href={`tel:${s.contact_phone}`} style={{ display:'inline-flex', alignItems:'center', gap:6, fontFamily:'DM Mono,monospace', fontSize:'clamp(10px,2vw,12px)', color:textSec, border:`1px solid ${t?'#cbd5e1':'#334155'}`, padding:'7px 12px', textDecoration:'none' }}>
+                          📞 {s.contact_phone}
+                        </a>
+                      )}
+                      {s.contact_location && (
+                        <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontFamily:'DM Mono,monospace', fontSize:'clamp(10px,2vw,12px)', color:textMut, border:`1px solid ${t?'#e2e8f0':'rgba(51,65,85,0.5)'}`, padding:'7px 12px' }}>
+                          📍 {s.contact_location}
+                        </span>
+                      )}
                     </div>
-                  </div>
+                  </RevealSection>
 
+                  <RevealSection delay={0.2}>
+                    <div style={{ display:'flex', alignItems:'center', flexWrap:'wrap', gap:12 }}>
+                      <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:textMut, textTransform:'uppercase', letterSpacing:'0.2em' }}>Find me on</span>
+                      <div style={{ display:'flex', gap:8 }}>
+                        {[{ url:s.social_github, label:'GitHub', icon:'⌥' },{ url:s.social_linkedin, label:'LinkedIn', icon:'in' },{ url:s.social_instagram, label:'Instagram', icon:'📷' }]
+                          .filter(x => x.url).map(x => (
+                          <a key={x.label} href={x.url} target="_blank" rel="noreferrer"
+                            style={{ width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${t?'#cbd5e1':'#334155'}`, color:textMut, fontSize:12, fontFamily:'DM Mono,monospace', transition:'all 0.3s', textDecoration:'none' }}
+                            onMouseEnter={e=>{ (e.currentTarget as HTMLElement).style.borderColor=cyber; (e.currentTarget as HTMLElement).style.color=cyber; }}
+                            onMouseLeave={e=>{ (e.currentTarget as HTMLElement).style.borderColor=t?'#cbd5e1':'#334155'; (e.currentTarget as HTMLElement).style.color=textMut; }}
+                            title={x.label}>{x.icon}</a>
+                        ))}
+                      </div>
+                    </div>
+                  </RevealSection>
+
+                  {/* Stats — staggered */}
                   <div className="stats-grid">
                     {[
-                      { value:`${projects.length}+`, label:'Projects',  color:cyber,    bg:'rgba(0,217,255,0.05)',   border:'rgba(0,217,255,0.2)' },
-                      { value:'2+',                  label:'Yrs Exp',   color:purple,   bg:'rgba(124,58,237,0.05)', border:'rgba(124,58,237,0.2)' },
+                      { value:`${totalProjects}+`, label:'Projects',  color:cyber,    bg:'rgba(0,217,255,0.05)',   border:'rgba(0,217,255,0.2)' },
+                      { value:yearsExp,                  label:'Yrs Exp',   color:purple,   bg:'rgba(124,58,237,0.05)', border:'rgba(124,58,237,0.2)' },
                       { value:'3.83',                label:'GPA',       color:green,    bg:'rgba(16,185,129,0.05)', border:'rgba(16,185,129,0.2)' },
                       { value:'4+',                  label:'Certs',     color:'#f59e0b',bg:'rgba(245,158,11,0.05)', border:'rgba(245,158,11,0.2)' },
-                    ].map(st => (
-                      <div key={st.label} style={{ background:st.bg, border:`1px solid ${st.border}`, padding:'clamp(12px,3vw,16px)', textAlign:'center', transition:'filter 0.3s' }}
+                    ].map((st, i) => (
+                      <motion.div key={st.label}
+                        initial={{ opacity:0, scale:0.85 }} whileInView={{ opacity:1, scale:1 }}
+                        viewport={{ once:true }} transition={{ delay: i * 0.1, type:'spring', stiffness:200 }}
+                        style={{ background:st.bg, border:`1px solid ${st.border}`, padding:'clamp(12px,3vw,16px)', textAlign:'center', transition:'filter 0.3s' }}
                         onMouseEnter={e=>(e.currentTarget as HTMLElement).style.filter='brightness(1.25)'}
                         onMouseLeave={e=>(e.currentTarget as HTMLElement).style.filter='none'}>
                         <div style={{ fontFamily:'Syne,sans-serif', fontSize:'clamp(18px,5vw,24px)', fontWeight:700, color:st.color, marginBottom:4 }}>{st.value}</div>
                         <div style={{ fontFamily:'DM Mono,monospace', fontSize:'clamp(9px,2vw,11px)', color:textMut, textTransform:'uppercase', letterSpacing:'0.1em' }}>{st.label}</div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 </div>
 
                 {/* Profile JSON card (desktop) */}
-                <div className="profile-card" style={{ position:'relative' }}>
+                <RevealSection delay={0.2} className="profile-card" style={{ position:'relative' }}>
                   <div className="animate-float-delay" style={{ position:'absolute', top:-20, right:-20, width:64, height:64, border:'1px solid rgba(0,217,255,0.15)', transform:'rotate(12deg)', pointerEvents:'none' }} />
                   <div className="animate-float" style={{ position:'absolute', bottom:-20, left:-20, width:40, height:40, border:'1px solid rgba(124,58,237,0.2)', transform:'rotate(-6deg)', pointerEvents:'none' }} />
                   <div style={{ background: t?'#fff':'#111633', border:`1px solid ${borderMed}`, overflow:'hidden' }}>
@@ -654,11 +827,10 @@ export default function HomePage() {
                     <div style={{ padding:20, fontFamily:'DM Mono,monospace', fontSize:13 }}>
                       <div style={{ color:textMut, marginBottom:8 }}>{'{'}</div>
                       {[
-
                         { k:'"name"',       v:`"${s.hero_title}"`,                          c:'#fcd34d' },
                         { k:'"education"',  v:`"${education?.title || 'S1 Informatics'}"`,  c:'#f9a8d4' },
                         { k:'"university"', v:`"${education?.company || 'UMS'}"`,           c:textSec   },
-                        { k:'"gpa"',        v:'3.83',            c:green     },
+                        { k:'"gpa"',        v:'3.83',                                        c:green     },
                         { k:'"location"',   v:`"${s.contact_location||''}"`,                c:t?'#334155':'#e2e8f0' },
                         { k:'"available"',  v:'true',                                        c:green     },
                       ].map((line, i, arr) => (
@@ -677,7 +849,6 @@ export default function HomePage() {
                         </span>
                         <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:green }}>Open to opportunities</span>
                       </div>
-                      {/* CV link in profile card also triggers lang picker */}
                       <button
                         onClick={() => setDownloadTarget('cv')}
                         style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:textMut, background:'none', border:'none', cursor:'pointer', transition:'color 0.3s', padding:0 }}
@@ -686,7 +857,7 @@ export default function HomePage() {
                       >↓ CV</button>
                     </div>
                   </div>
-                </div>
+                </RevealSection>
               </div>
             </div>
           </section>
@@ -695,7 +866,7 @@ export default function HomePage() {
         {/* ══════════ PROJECTS ══════════ */}
         <section id="projects" className="section-pad">
           <div style={{ maxWidth:1280, margin:'0 auto' }}>
-            <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:'clamp(28px,6vh,48px)' }}>
+            <RevealSection style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:'clamp(28px,6vh,48px)' }}>
               <div>
                 <div className="section-tag" style={{ marginBottom:12 }}>Featured Work</div>
                 <h2 className="section-h2">Selected <span style={{ color:cyber }}>Projects</span></h2>
@@ -703,7 +874,7 @@ export default function HomePage() {
               <a href="/portfolio" style={{ fontFamily:'DM Mono,monospace', fontSize:12, color:textMut, textDecoration:'none', transition:'color 0.3s', whiteSpace:'nowrap' }}
                 onMouseEnter={e=>(e.currentTarget as HTMLElement).style.color=cyber}
                 onMouseLeave={e=>(e.currentTarget as HTMLElement).style.color=textMut}>All Projects →</a>
-            </div>
+            </RevealSection>
 
             <div className="projects-grid">
               <AnimatePresence>
@@ -712,8 +883,11 @@ export default function HomePage() {
                 )}
                 {visibleProjects.map((project, i) => (
                   <motion.article key={project._id} layout
-                    initial={{ opacity:0, y:24, scale:0.95 }} animate={{ opacity:1, y:0, scale:1 }} exit={{ opacity:0 }}
-                    transition={{ duration:0.4, delay:(i % 3) * 0.08 }}
+                    initial={{ opacity:0, y:32, scale:0.95 }}
+                    whileInView={{ opacity:1, y:0, scale:1 }}
+                    viewport={{ once:true, margin:'-40px' }}
+                    exit={{ opacity:0 }}
+                    transition={{ duration:0.5, delay:(i % 3) * 0.1 }}
                     className="card" style={{ overflow:'hidden', display:'flex', flexDirection:'column' }}>
                     <div style={{ position:'relative', height:'clamp(160px,25vw,200px)', overflow:'hidden' }}>
                       <Image src={project.imagePath} alt={project.title} fill style={{ objectFit:'cover' }} />
@@ -747,7 +921,7 @@ export default function HomePage() {
               </AnimatePresence>
             </div>
 
-            <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'center', marginTop:'clamp(28px,6vh,48px)', gap:12 }}>
+            <RevealSection delay={0.1} style={{ display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'center', marginTop:'clamp(28px,6vh,48px)', gap:12 }}>
               {visibleCount < projects.length && (
                 <button onClick={() => setVisibleCount(v => Math.min(v + perRow, projects.length))}
                   style={{ padding:'10px 28px', border:'1px solid rgba(0,217,255,0.4)', background:'rgba(17,22,51,0.5)', color:textSec, fontFamily:'DM Mono,monospace', fontSize:'clamp(12px,2.5vw,14px)', cursor:'pointer', transition:'all 0.3s' }}
@@ -765,21 +939,27 @@ export default function HomePage() {
               <a href="/portfolio" style={{ padding:'10px 20px', border:`1px solid ${t?'#e2e8f0':'rgba(51,65,85,0.5)'}`, color:textMut, fontFamily:'DM Mono,monospace', fontSize:12, textDecoration:'none', transition:'color 0.3s' }}
                 onMouseEnter={e=>(e.currentTarget as HTMLElement).style.color=cyber}
                 onMouseLeave={e=>(e.currentTarget as HTMLElement).style.color=textMut}>View All ↗</a>
-            </div>
+            </RevealSection>
           </div>
         </section>
 
         {/* ══════════ SKILLS ══════════ */}
         <section id="skills" className="section-pad" style={{ background: t?'rgba(221,229,245,0.5)':'rgba(10,14,39,0.5)' }}>
           <div style={{ maxWidth:1280, margin:'0 auto' }}>
-            <div className="section-tag" style={{ marginBottom:12 }}>Capabilities</div>
-            <h2 className="section-h2" style={{ marginBottom:'clamp(28px,6vh,48px)' }}>Technical <span style={{ color:cyber }}>Arsenal</span></h2>
+            <RevealSection>
+              <div className="section-tag" style={{ marginBottom:12 }}>Capabilities</div>
+              <h2 className="section-h2" style={{ marginBottom:'clamp(28px,6vh,48px)' }}>Technical <span style={{ color:cyber }}>Arsenal</span></h2>
+            </RevealSection>
             <div className="skills-grid">
               {skills.slice(0,12).map((skill, i) => (
-                <motion.div key={skill._id} initial={{ opacity:0, scale:0.9 }} whileInView={{ opacity:1, scale:1 }} viewport={{ once:true }} transition={{ delay:(i%6)*0.06 }}
+                <motion.div key={skill._id}
+                  initial={{ opacity:0, scale:0.8, y:20 }}
+                  whileInView={{ opacity:1, scale:1, y:0 }}
+                  viewport={{ once:true, margin:'-30px' }}
+                  transition={{ delay:(i%6)*0.07, type:'spring', stiffness:180, damping:16 }}
                   style={{ background: t?'rgba(228,234,248,0.7)':'rgba(30,39,73,0.5)', border:`1px solid ${borderSub}`, padding:'clamp(12px,3vw,16px)', display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', cursor:'default', transition:'all 0.3s' }}
-                  onMouseEnter={e=>{ const el=e.currentTarget; el.style.borderColor=t?'rgba(0,140,180,0.5)':'rgba(0,217,255,0.5)'; el.style.background=t?'rgba(228,234,248,1)':'rgba(30,39,73,1)'; }}
-                  onMouseLeave={e=>{ const el=e.currentTarget; el.style.borderColor=borderSub; el.style.background=t?'rgba(228,234,248,0.7)':'rgba(30,39,73,0.5)'; }}>
+                  whileHover={{ scale:1.05, borderColor: t?'rgba(0,140,180,0.5)':'rgba(0,217,255,0.5)' }}
+                >
                   <div style={{ fontSize:'clamp(20px,4vw,28px)', marginBottom:8 }}>
                     {skill.icon==='laravel'?'🔴':skill.icon==='python'?'🐍':skill.icon==='javascript'?'🟡':skill.icon==='mysql'?'🗄️':skill.icon==='git'?'🌿':skill.icon==='linux'?'🐧':skill.icon==='php'?'🐘':skill.icon==='react'?'⚛️':skill.icon==='puzzle'?'🧩':skill.icon==='users'?'🤝':skill.icon==='clock'?'⏰':'🧠'}
                   </div>
@@ -793,8 +973,10 @@ export default function HomePage() {
         {/* ══════════ EXPERIENCE ══════════ */}
         <section id="experience" className="section-pad">
           <div style={{ maxWidth:1280, margin:'0 auto' }}>
-            <div className="section-tag" style={{ marginBottom:12 }}>Career</div>
-            <h2 className="section-h2" style={{ marginBottom:'clamp(28px,6vh,48px)' }}>Work <span style={{ color:cyber }}>Experience</span></h2>
+            <RevealSection>
+              <div className="section-tag" style={{ marginBottom:12 }}>Career</div>
+              <h2 className="section-h2" style={{ marginBottom:'clamp(28px,6vh,48px)' }}>Work <span style={{ color:cyber }}>Experience</span></h2>
+            </RevealSection>
 
             <div className="timeline-wrap">
               <div className="timeline-line" />
@@ -802,7 +984,11 @@ export default function HomePage() {
                 {experiences.map((exp, i) => {
                   const isCurrent = !exp.endDate;
                   return (
-                    <motion.div key={exp._id} initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} transition={{ delay:i*0.1 }}
+                    <motion.div key={exp._id}
+                      initial={{ opacity:0, x: i % 2 === 0 ? -32 : 32 }}
+                      whileInView={{ opacity:1, x:0 }}
+                      viewport={{ once:true, margin:'-60px' }}
+                      transition={{ duration:0.6, delay: i * 0.08 }}
                       style={{ position:'relative' }}>
                       <div className="timeline-dot-wrap">
                         {isCurrent ? (
@@ -850,7 +1036,12 @@ export default function HomePage() {
         {/* ══════════ CTA ══════════ */}
         <section className="section-pad" style={{ position:'relative', overflow:'hidden' }}>
           <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,rgba(0,217,255,0.05),transparent,rgba(124,58,237,0.05))', pointerEvents:'none' }} />
-          <motion.div initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} className="cta-wrap">
+          <motion.div
+            initial={{ opacity:0, y:40, scale:0.97 }}
+            whileInView={{ opacity:1, y:0, scale:1 }}
+            viewport={{ once:true, margin:'-60px' }}
+            transition={{ duration:0.7 }}
+            className="cta-wrap">
             <div className="section-tag" style={{ marginBottom:16, justifyContent:'center' }}>Let's Connect</div>
             <h2 className="section-h2" style={{ marginBottom:16 }}>Got a project in mind?</h2>
             <p style={{ color:textSec, marginBottom:32, lineHeight:1.7, fontSize:'clamp(14px,3vw,16px)' }}>Let's discuss and turn your ideas into real solutions.</p>
@@ -860,5 +1051,17 @@ export default function HomePage() {
 
       </div>
     </>
+  );
+}
+
+// ── Scroll Progress Bar component ─────────────────────
+function ScrollProgressBar({ cyber, purple }: { cyber: string; purple: string }) {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useTransform(scrollYProgress, [0, 1], [0, 1]);
+  return (
+    <motion.div
+      id="scroll-progress"
+      style={{ scaleX, width:'100%', background:`linear-gradient(90deg,${cyber},${purple})` }}
+    />
   );
 }

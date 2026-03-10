@@ -536,7 +536,7 @@ export default function LoginPage() {
                 <div className="lp-logo-br" />
               </div>
               <span className="lp-logo-text">
-                CMD<span style={{ color: '#00d9ff' }}>_</span>CTR
+                MIA<span style={{ color: '#00d9ff' }}>.</span>Dev
               </span>
             </Link>
             <div>
