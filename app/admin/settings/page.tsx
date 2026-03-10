@@ -79,7 +79,7 @@ const GROUPS = [
     color: '#facc15',
     keys:  ['site_title', 'site_description', 'site_keywords'],
   },
-] as const;
+];
 
 // ── Auto-detect if a key should render as textarea ────────────────────────────
 function isTextarea(key: string, type: string) {
@@ -107,7 +107,6 @@ function SettingRow({
   const [saved,   setSaved]   = useState(false);
   const [err,     setErr]     = useState('');
 
-  // Re-sync if parent data changes (e.g. after save)
   const prevId = useRef(setting._id);
   useEffect(() => {
     if (prevId.current !== setting._id) {
@@ -297,7 +296,7 @@ export default function SettingsPage() {
   }
 
   const map = Object.fromEntries(settings.map(s => [s.key, s]));
-  const knownKeys = new Set(GROUPS.flatMap(g => [...g.keys]));
+  const knownKeys = new Set<string>(GROUPS.flatMap(g => [...g.keys]));
   const others = settings.filter(s => !knownKeys.has(s.key));
 
   const total    = settings.length;
@@ -332,7 +331,6 @@ export default function SettingsPage() {
         </Panel>
       ) : (
         <>
-          {/* ── Grouped sections ── */}
           {GROUPS.map(({ label, color, keys }) => {
             const rows = keys.map(k => map[k]).filter(Boolean);
             if (rows.length === 0) return null;
@@ -342,7 +340,6 @@ export default function SettingsPage() {
 
             return (
               <div key={label} style={{ marginBottom: 28 }}>
-                {/* Divider */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                   <span style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.68rem', letterSpacing: '0.16em', textTransform: 'uppercase', color, whiteSpace: 'nowrap' }}>
                     {label}
@@ -367,7 +364,6 @@ export default function SettingsPage() {
             );
           })}
 
-          {/* ── Other / uncategorized ── */}
           {others.length > 0 && (
             <div style={{ marginBottom: 28 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
@@ -380,7 +376,6 @@ export default function SettingsPage() {
                 </span>
               </div>
               <Panel style={{ overflow: 'hidden', padding: 0 }}>
-                {/* header */}
                 <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr 90px', gap: 18, padding: '8px 22px', background: '#06091a', borderBottom: '1px solid rgba(0,217,255,0.08)' }}>
                   {['Key', 'Value', ''].map(h => (
                     <div key={h} style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.58rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#374151' }}>{h}</div>
