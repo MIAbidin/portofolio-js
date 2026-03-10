@@ -4,8 +4,8 @@
  * Works on Vercel serverless. Requires: npm install pdfkit @types/pdfkit
  */
 
-// @ts-ignore
-import PDFDocument from 'pdfkit';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const PDFDocument = require('pdfkit');
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface CvLabels {

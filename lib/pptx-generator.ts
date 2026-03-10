@@ -4,8 +4,8 @@
  * Works on Vercel serverless. Requires: npm install pptxgenjs
  */
 
-// @ts-ignore
-import pptxgen from 'pptxgenjs';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pptxgen = require('pptxgenjs');
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface PptxPayload {
