@@ -9,12 +9,13 @@ import Project from '@/models/Project';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
+    const { id } = await params;
     
-    const category = await Category.findById(params.id).lean();
+    const category = await Category.findById(id).lean();
     
     if (!category) {
       return NextResponse.json(
@@ -23,8 +24,7 @@ export async function GET(
       );
     }
     
-    // Optionally include project count
-    const projectCount = await Project.countDocuments({ categoryId: params.id });
+    const projectCount = await Project.countDocuments({ categoryId: id });
     
     return NextResponse.json({ 
       success: true, 
@@ -48,16 +48,16 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
+    const { id } = await params;
     
     const body = await request.json();
     const { name, icon } = body;
     
-    // Find existing category
-    const existingCategory = await Category.findById(params.id);
+    const existingCategory = await Category.findById(id);
     
     if (!existingCategory) {
       return NextResponse.json(
@@ -66,7 +66,6 @@ export async function PUT(
       );
     }
 
-    // Update slug if name changed
     let slug = existingCategory.slug;
     if (name && name !== existingCategory.name) {
       slug = name
@@ -74,10 +73,9 @@ export async function PUT(
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
       
-      // Check if new slug already exists (excluding current category)
       const duplicateSlug = await Category.findOne({ 
         slug, 
-        _id: { $ne: params.id } 
+        _id: { $ne: id } 
       });
       
       if (duplicateSlug) {
@@ -89,7 +87,7 @@ export async function PUT(
     }
     
     const category = await Category.findByIdAndUpdate(
-      params.id,
+      id,
       { 
         name: name?.trim() || existingCategory.name,
         slug,
@@ -122,13 +120,13 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
+    const { id } = await params;
     
-    // Check if category has projects
-    const projectCount = await Project.countDocuments({ categoryId: params.id });
+    const projectCount = await Project.countDocuments({ categoryId: id });
     
     if (projectCount > 0) {
       return NextResponse.json(
@@ -140,7 +138,7 @@ export async function DELETE(
       );
     }
     
-    const category = await Category.findByIdAndDelete(params.id);
+    const category = await Category.findByIdAndDelete(id);
     
     if (!category) {
       return NextResponse.json(
