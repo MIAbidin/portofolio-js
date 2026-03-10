@@ -202,7 +202,7 @@ function CVPreviewInner() {
   const ownerEmail    = settingsMap['contact_email']?.value  || '';
   const ownerPhone    = settingsMap['contact_phone']?.value  || '';
   const ownerLinkedin = settingsMap['social_linkedin']?.value || '';
-  const contactItems  = [ownerEmail, ownerPhone, ownerLocation, ownerLinkedin?.replace(/https?:\/\/(www\.)?/, ''), 'MIA.dev'].filter(Boolean);
+  const contactItems  = [ownerEmail, ownerPhone, ownerLocation, ownerLinkedin?.replace(/https?:\/\/(www\.)?/, ''), 'miabidin.dev'].filter(Boolean);
 
   return (
     <>

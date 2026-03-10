@@ -1,17 +1,17 @@
+/**
+ * app/api/cv/download/route.ts
+ * CV PDF download — inline generation, works on Vercel serverless.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import fs from 'fs/promises';
-import path from 'path';
 import dbConnect from '@/lib/mongodb';
 import ProjectModel from '@/models/Project';
 import SkillModel from '@/models/Skill';
 import ExperienceModel from '@/models/Experience';
 import SettingModel from '@/models/Setting';
+import { generateCvBuffer, type CvPayload } from '@/lib/cv-generator';
 
-const execAsync = promisify(exec);
-
-// ── Bilingual UI labels (section headings only — not DB content) ───────────
+// ── Bilingual section labels ──────────────────────────────────────────────────
 const SECTION_LABELS = {
   en: {
     summary: 'PROFESSIONAL SUMMARY', education: 'EDUCATION',
@@ -44,30 +44,20 @@ export async function GET(request: NextRequest) {
       SettingModel.find({}),
       ProjectModel.find({}).populate('categoryId').sort({ isFeatured: -1, order: 1 }),
       SkillModel.find({}).sort({ category: 1, order: 1 }),
-      ExperienceModel.find({ type: 'work'      }).sort({ startDate: -1 }),
+      ExperienceModel.find({ type: 'work' }).sort({ startDate: -1 }),
       ExperienceModel.find({ type: 'education' }).sort({ startDate: -1 }),
     ]);
-    // Setelah fetch experiences, tambah ini:
-    console.log('Sample experience _id fields:', workExps[0]?.description_id, workExps[0]?.achievements_id?.length);
 
     const sm = settings.reduce((acc, s) => ({ ...acc, [s.key]: s }), {} as Record<string, any>);
 
-    // ── Helper: pick language field ────────────────────────────────────────
-    // For ID: use _id field if filled, otherwise fall back to primary (EN)
     const pickText = (primary: string, translated: string) =>
       isID && translated ? translated : primary;
-
     const pickArr = (primary: string[], translated: string[]) =>
       isID && translated?.length > 0 ? translated : primary;
 
-    // ── Owner ──────────────────────────────────────────────────────────────
-    const aboutSetting    = sm['about_text']    || {};
-    const subtitleSetting = sm['hero_subtitle'] || {};
-
+    // ── Owner ─────────────────────────────────────────────────────────────────
     const ownerName     = sm['hero_title']?.value       || 'Muhammad Irfan Abidin';
-    const ownerRole     = isID
-      ? 'IT Support & Full Stack Developer'
-      : 'IT Support & Full Stack Developer';
+    const aboutSetting  = sm['about_text']    || {};
     const aboutText     = pickText(aboutSetting.value || '', aboutSetting.value_id || '');
     const ownerEmail    = sm['contact_email']?.value    || '';
     const ownerPhone    = sm['contact_phone']?.value    || '';
@@ -76,9 +66,8 @@ export async function GET(request: NextRequest) {
       sm['contact_location']?.value_id || ''
     );
     const ownerLinkedin = sm['social_linkedin']?.value  || '';
-    const ownerGpa      = '3.83';
 
-    // ── Experiences ────────────────────────────────────────────────────────
+    // ── Build experiences ─────────────────────────────────────────────────────
     const experiencesData = workExps.map(e => ({
       title:       e.title,
       company:     e.company,
@@ -93,7 +82,7 @@ export async function GET(request: NextRequest) {
       ),
     }));
 
-    // ── Educations ─────────────────────────────────────────────────────────
+    // ── Build educations ──────────────────────────────────────────────────────
     const educationsData = educations.map(e => ({
       title:       e.title,
       company:     e.company,
@@ -107,30 +96,27 @@ export async function GET(request: NextRequest) {
       ),
     }));
 
-    // ── Projects ───────────────────────────────────────────────────────────
+    // ── Build projects ────────────────────────────────────────────────────────
     const projectsData = projects.map(p => ({
-      id:          p._id.toString(),
-      title:       p.title,
-      description: pickText(
-        p.description?.replace(/<[^>]*>/g, '') || '',
-        p.description_id || ''
-      ),
+      id:               p._id.toString(),
+      title:            p.title,
+      description:      pickText(p.description?.replace(/<[^>]*>/g, '') || '', p.description_id || ''),
       shortDescription: pickText(p.shortDescription || '', p.shortDescription_id || ''),
-      category:    (p.categoryId as any)?.name || '',
-      tech_stack:  p.techStack || [],
-      github_url:  p.githubUrl,
-      demo_url:    p.demoUrl,
-      is_featured: p.isFeatured,
+      category:         (p.categoryId as any)?.name || '',
+      tech_stack:       p.techStack || [],
+      github_url:       p.githubUrl,
+      demo_url:         p.demoUrl,
+      is_featured:      p.isFeatured,
     }));
 
-    // ── Skills ─────────────────────────────────────────────────────────────
+    // ── Build skills ──────────────────────────────────────────────────────────
     const skillsData = skills.map(s => ({
       name:     s.name,
-      category: s.category,
+      category: s.category as 'hard' | 'soft',
       level:    s.proficiency || null,
     }));
 
-    // ── Certifications (language-neutral titles) ───────────────────────────
+    // ── Certifications ────────────────────────────────────────────────────────
     const certifications = [
       { name: 'Introduction to Cybersecurity',       issuer: 'Cisco Networking Academy', year: '2024' },
       { name: 'Networking Basics',                   issuer: 'Cisco Networking Academy', year: '2024' },
@@ -138,8 +124,8 @@ export async function GET(request: NextRequest) {
       { name: 'Bootcamp Digital Talent Scholarship', issuer: 'Kominfo & DBS Foundation', year: '2023' },
     ];
 
-    // ── Assemble payload ───────────────────────────────────────────────────
-    const payload = {
+    // ── Assemble payload ──────────────────────────────────────────────────────
+    const payload: CvPayload = {
       lang,
       labels,
       generated_at: new Date().toLocaleDateString(
@@ -147,9 +133,14 @@ export async function GET(request: NextRequest) {
         { day: '2-digit', month: 'short', year: 'numeric' }
       ),
       owner: {
-        name: ownerName, role: ownerRole, about: aboutText,
-        email: ownerEmail, phone: ownerPhone,
-        location: ownerLocation, linkedin: ownerLinkedin, gpa: ownerGpa,
+        name:     ownerName,
+        role:     'IT Support & Full Stack Developer',
+        about:    aboutText,
+        email:    ownerEmail,
+        phone:    ownerPhone,
+        location: ownerLocation,
+        linkedin: ownerLinkedin,
+        gpa:      '3.83',
       },
       projects:       projectsData,
       skills:         skillsData,
@@ -158,43 +149,13 @@ export async function GET(request: NextRequest) {
       certifications,
     };
 
-    // ── Write payload & run PDF script ────────────────────────────────────
-    const timestamp   = Date.now();
-    const tempDir     = path.join(process.cwd(), 'temp');
-    const scriptPath  = path.join(process.cwd(), 'scripts', 'generate-cv-ats.cjs');
-    const outputPath  = path.join(tempDir, `cv-${lang}-${timestamp}.pdf`);
-    const payloadPath = path.join(tempDir, `cv-payload-${timestamp}.json`);
-
-    await fs.mkdir(tempDir, { recursive: true });
-    await fs.writeFile(payloadPath, JSON.stringify(payload, null, 2));
-
-    try { await fs.access(scriptPath); } catch {
-      await fs.unlink(payloadPath);
-      return NextResponse.json({ error: 'CV generation script not found.' }, { status: 500 });
-    }
-
-    try {
-      const { stdout, stderr } = await execAsync(`node "${scriptPath}" "${payloadPath}" "${outputPath}"`);
-      if (stdout) console.log('CV gen:', stdout);
-      if (stderr) console.error('CV gen stderr:', stderr);
-    } catch (err) {
-      await fs.unlink(payloadPath).catch(() => {});
-      return NextResponse.json({ error: 'Failed to generate CV PDF.' }, { status: 500 });
-    }
-
-    await fs.unlink(payloadPath);
-
-    try { await fs.access(outputPath); } catch {
-      return NextResponse.json({ error: 'CV PDF was not created.' }, { status: 500 });
-    }
-
-    const fileBuffer = await fs.readFile(outputPath);
-    await fs.unlink(outputPath);
+    // ── Generate PDF inline (no exec, no filesystem) ──────────────────────────
+    const fileBuffer = await generateCvBuffer(payload);
 
     const langSuffix = lang === 'id' ? '_ID' : '_EN';
     const filename   = `CV_${ownerName.replace(/ /g, '_')}_${new Date().getFullYear()}${langSuffix}.pdf`;
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(new Uint8Array(fileBuffer), {
       headers: {
         'Content-Type':        'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
