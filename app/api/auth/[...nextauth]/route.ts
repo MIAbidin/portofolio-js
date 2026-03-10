@@ -4,12 +4,23 @@ import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
 
+// Extend NextAuth types to include 'id'
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id:     string;
+      name?:  string | null;
+      email?: string | null;
+      image?: string | null;
+    };
+  }
+}
+
 const handler = NextAuth({
   providers: [
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        // Terima 'name' bukan 'email' — sesuai form login
         name:     { label: "Name",     type: "text"     },
         password: { label: "Password", type: "password" },
       },
@@ -20,7 +31,6 @@ const handler = NextAuth({
 
         await dbConnect();
 
-        // Cari user berdasarkan name (case-insensitive)
         const user = await User.findOne({
           name: { $regex: new RegExp(`^${credentials.name}$`, "i") },
         });
