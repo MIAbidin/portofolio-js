@@ -160,6 +160,9 @@ export default function ContactPage() {
     outline: 'none',
     transition: 'border-color 0.2s',
     boxShadow: focusedField === field && !hasError ? `0 0 0 1px ${cyber}22` : 'none',
+    borderRadius: 0,
+    WebkitAppearance: 'none',
+    appearance: 'none',
   });
 
   return (
@@ -196,23 +199,104 @@ export default function ContactPage() {
         .spin { animation: spin 0.8s linear infinite; }
         @keyframes fadeSlideIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
         .alert-in { animation: fadeSlideIn 0.3s ease-out; }
+
+        /* ── Responsive layout ── */
+        .contact-wrapper {
+          max-width: 1152px;
+          margin: 0 auto;
+          padding: clamp(40px, 8vh, 64px) clamp(16px, 5vw, 48px) clamp(48px, 10vh, 96px);
+        }
+        .contact-grid {
+          display: grid;
+          grid-template-columns: 2fr 3fr;
+          gap: 48px;
+          align-items: start;
+        }
+        .form-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        .form-padding {
+          padding: 32px;
+        }
+        .channel-value {
+          display: block;
+        }
+
+        /* ── Mobile ── */
+        @media (max-width: 767px) {
+          .contact-grid {
+            grid-template-columns: 1fr;
+            gap: 28px;
+          }
+          .form-row {
+            grid-template-columns: 1fr;
+            gap: 20px;
+          }
+          .form-padding {
+            padding: 20px 16px;
+          }
+          .submit-row {
+            flex-direction: column;
+            align-items: stretch !important;
+          }
+          .submit-btn {
+            justify-content: center;
+          }
+          .channels-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }
+          .channel-value {
+            display: none;
+          }
+          .channel-arrow {
+            display: none;
+          }
+        }
+
+        /* ── Small mobile ── */
+        @media (max-width: 400px) {
+          .channels-row {
+            grid-template-columns: 1fr;
+          }
+          .channel-value {
+            display: block;
+          }
+        }
+
+        /* ── Tablet ── */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .contact-grid {
+            grid-template-columns: 1fr;
+            gap: 36px;
+          }
+          .left-col-tablet {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 24px;
+            align-items: start;
+          }
+        }
       `}</style>
 
       <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
-        <div style={{ maxWidth: 1152, margin: '0 auto', padding: '64px 48px 96px' }}>
+        <div className="contact-wrapper">
 
           {/* ── Page Header ─────────────────────────────── */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            style={{ marginBottom: 64 }}
+            style={{ marginBottom: 'clamp(36px, 7vh, 64px)' }}
           >
             <div className="section-tag" style={{ marginBottom: 12 }}>Get In Touch</div>
             <h1 style={{
               fontFamily: 'Syne, sans-serif',
               fontWeight: 800,
-              fontSize: 'clamp(2.5rem, 6vw, 4rem)',
+              fontSize: 'clamp(2rem, 8vw, 4rem)',
               color: t ? '#0f172a' : '#fff',
               marginBottom: 16,
               lineHeight: 1,
@@ -220,16 +304,22 @@ export default function ContactPage() {
             }}>
               Let's <span style={{ color: cyber }}>Connect</span>
             </h1>
-            <p style={{ color: textSec, maxWidth: 480, lineHeight: 1.7, fontFamily: 'Outfit, sans-serif' }}>
+            <p style={{
+              color: textSec,
+              maxWidth: 480,
+              lineHeight: 1.7,
+              fontFamily: 'Outfit, sans-serif',
+              fontSize: 'clamp(13px, 3vw, 15px)',
+            }}>
               Punya proyek menarik? Atau hanya ingin say hi? Kirim pesan dan saya akan membalas secepat mungkin.
             </p>
           </motion.div>
 
           {/* ── Main Grid ──────────────────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr', gap: 48, alignItems: 'start' }}>
+          <div className="contact-grid">
 
             {/* ── Left: Contact Info ──────────────────── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div className="left-col-tablet" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
               {/* Status card */}
               <motion.div
@@ -239,7 +329,7 @@ export default function ContactPage() {
                 style={{
                   background: bgCard,
                   border: `1px solid ${t ? 'rgba(0,140,180,0.12)' : 'rgba(0,217,255,0.08)'}`,
-                  padding: 24,
+                  padding: 'clamp(16px, 4vw, 24px)',
                   position: 'relative',
                   overflow: 'hidden',
                 }}
@@ -254,7 +344,7 @@ export default function ContactPage() {
                     Available for work
                   </span>
                 </div>
-                <p style={{ color: textSec, fontSize: 13, lineHeight: 1.7, fontFamily: 'Outfit, sans-serif' }}>
+                <p style={{ color: textSec, fontSize: 'clamp(12px, 2.5vw, 13px)', lineHeight: 1.7, fontFamily: 'Outfit, sans-serif' }}>
                   Saat ini saya terbuka untuk proyek freelance, kolaborasi, maupun peluang kerja full-time.
                 </p>
               </motion.div>
@@ -264,7 +354,7 @@ export default function ContactPage() {
                 <p style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.2em', color: textMut, marginBottom: 12 }}>
                   Direct Channels
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="channels-row" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {channels.map((ch, i) => (
                     <motion.a
                       key={ch.label}
@@ -280,7 +370,7 @@ export default function ContactPage() {
                         gap: 14,
                         background: bgCard,
                         border: `1px solid ${t ? 'rgba(0,140,180,0.1)' : 'rgba(51,65,85,0.6)'}`,
-                        padding: '14px 16px',
+                        padding: 'clamp(10px, 3vw, 14px) clamp(12px, 3vw, 16px)',
                         textDecoration: 'none',
                         transition: 'all 0.2s',
                         cursor: 'pointer',
@@ -290,6 +380,7 @@ export default function ContactPage() {
                         y: -2,
                         boxShadow: `0 8px 24px rgba(0,0,0,0.3)`,
                       }}
+                      whileTap={{ scale: 0.98 }}
                     >
                       {/* Icon box */}
                       <div style={{
@@ -300,7 +391,7 @@ export default function ContactPage() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
-                        color: textMut,
+                        color: cyber,
                         transition: 'all 0.2s',
                       }}>
                         {ch.icon}
@@ -309,11 +400,11 @@ export default function ContactPage() {
                         <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: textMut, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 2 }}>
                           {ch.label}
                         </div>
-                        <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: 13, color: textSec, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div className="channel-value" style={{ fontFamily: 'Outfit, sans-serif', fontSize: 'clamp(11px, 2.5vw, 13px)', color: textSec, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {ch.value}
                         </div>
                       </div>
-                      <svg width={12} height={12} fill="none" stroke={textMut} viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                      <svg className="channel-arrow" width={12} height={12} fill="none" stroke={textMut} viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </motion.a>
@@ -341,7 +432,7 @@ export default function ContactPage() {
                       gap: 14,
                       border: `1px solid rgba(16,185,129,0.3)`,
                       background: 'rgba(16,185,129,0.05)',
-                      padding: '16px 20px',
+                      padding: 'clamp(12px, 3vw, 16px) clamp(14px, 4vw, 20px)',
                       marginBottom: 24,
                     }}
                   >
@@ -380,7 +471,7 @@ export default function ContactPage() {
                       gap: 14,
                       border: '1px solid rgba(248,113,113,0.3)',
                       background: 'rgba(248,113,113,0.05)',
-                      padding: '16px 20px',
+                      padding: 'clamp(12px, 3vw, 16px) clamp(14px, 4vw, 20px)',
                       marginBottom: 24,
                     }}
                   >
@@ -404,10 +495,10 @@ export default function ContactPage() {
                 {/* Top accent */}
                 <div style={{ height: 2, background: `linear-gradient(90deg, transparent, ${cyber}, transparent)` }} />
 
-                <div style={{ padding: '32px 32px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <div className="form-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(16px, 4vw, 24px)' }}>
 
-                  {/* Name + Email row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  {/* Name + Email row — stacks on mobile */}
+                  <div className="form-row">
                     <FieldGroup label="Name" required error={errors.sender_name} cyber={cyber}>
                       <input
                         type="text"
@@ -417,6 +508,7 @@ export default function ContactPage() {
                         onBlur={() => setFocusedField(null)}
                         placeholder="Your name"
                         style={inputStyle('sender_name', !!errors.sender_name)}
+                        autoComplete="name"
                       />
                     </FieldGroup>
 
@@ -429,6 +521,8 @@ export default function ContactPage() {
                         onBlur={() => setFocusedField(null)}
                         placeholder="your@email.com"
                         style={inputStyle('sender_email', !!errors.sender_email)}
+                        autoComplete="email"
+                        inputMode="email"
                       />
                     </FieldGroup>
                   </div>
@@ -449,7 +543,7 @@ export default function ContactPage() {
                   {/* Message */}
                   <FieldGroup label="Message" required error={errors.message} cyber={cyber}>
                     <textarea
-                      rows={6}
+                      rows={5}
                       value={form.message}
                       onChange={e => handleChange('message', e.target.value)}
                       onFocus={() => setFocusedField('message')}
@@ -459,20 +553,21 @@ export default function ContactPage() {
                     />
                   </FieldGroup>
 
-                  {/* Footer row */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8 }}>
+                  {/* Footer row — stacks on mobile */}
+                  <div className="submit-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, gap: 12 }}>
                     <p style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: textMut }}>
                       <span style={{ color: cyber }}>*</span> Required fields
                     </p>
 
                     <button
+                      className="submit-btn"
                       onClick={handleSubmit}
                       disabled={status === 'loading'}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 8,
-                        padding: '11px 28px',
+                        padding: '12px 28px',
                         background: status === 'loading'
                           ? 'rgba(0,217,255,0.08)'
                           : `linear-gradient(135deg, rgba(0,217,255,0.13), rgba(124,58,237,0.13))`,
@@ -485,6 +580,9 @@ export default function ContactPage() {
                         cursor: status === 'loading' ? 'not-allowed' : 'pointer',
                         opacity: status === 'loading' ? 0.7 : 1,
                         transition: 'all 0.3s',
+                        WebkitTapHighlightColor: 'transparent',
+                        touchAction: 'manipulation',
+                        width: 'auto',
                       }}
                       onMouseEnter={e => {
                         if (status !== 'loading') {
