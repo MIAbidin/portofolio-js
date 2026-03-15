@@ -4,12 +4,23 @@ import './globals.css';
 import { Providers } from '@/components/Providers';
 
 export const metadata: Metadata = {
-  title: 'MIA.Dev | Portfolio',
-  description: 'Portfolio profesional — Full Stack Developer & AI Engineer Enthusiast',
+  title: 'Muhammad Irfan Abidin | Full Stack Developer & AI Engineer',
+  description: 'Portfolio Muhammad Irfan Abidin (MIA) — Full Stack Developer & AI Engineer Enthusiast. Lihat proyek dan keahlian saya di miabidin.dev',
+  keywords: ['Muhammad Irfan Abidin', 'MIA', 'miabidin', 'Full Stack Developer', 'AI Engineer', 'Portfolio'],
+  authors: [{ name: 'Muhammad Irfan Abidin', url: 'https://miabidin.dev' }],
+  creator: 'Muhammad Irfan Abidin',
   openGraph: {
-    title: 'MIA.Dev | Portfolio',
-    description: 'Portfolio profesional — Full Stack Developer',
+    title: 'Muhammad Irfan Abidin | Full Stack Developer & AI Engineer',
+    description: 'Portfolio Muhammad Irfan Abidin — Full Stack Developer & AI Engineer Enthusiast',
+    url: 'https://miabidin.dev',
+    siteName: 'miabidin.dev',
     type: 'website',
+    locale: 'id_ID',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Muhammad Irfan Abidin | Full Stack Developer',
+    description: 'Portfolio Muhammad Irfan Abidin — Full Stack Developer & AI Engineer Enthusiast',
   },
 };
 
