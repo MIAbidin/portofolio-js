@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useParams } from 'next/navigation';
+import { useTheme } from '@/components/ThemeProvider';
 import ProjectCard from '@/components/ProjectCard';
 
 // ── Types ─────────────────────────────────────────────────
@@ -21,13 +22,37 @@ interface Project {
   createdAt: string;
 }
 
-const cyber  = '#00d9ff';
-const purple = '#7c3aed';
-const green  = '#10b981';
-
 export default function PortfolioDetailPage() {
   const params = useParams();
   const slug   = params?.slug as string;
+  const { isLight } = useTheme();
+  const t = isLight;
+
+  // ── Theme vars ────────────────────────────────────────────
+  const cyber       = t ? '#0077aa' : '#00d9ff';
+  const purple      = '#7c3aed';
+  const green       = '#10b981';
+  const bg          = t ? '#f0f4ff' : '#0a0e27';
+  const bgCard      = t ? '#ffffff' : '#111633';
+  const bgPage      = t ? '#f0f4ff' : '#0a0e27';
+  const textPri     = t ? '#0f172a' : '#fff';
+  const textSec     = t ? '#334155' : '#64748b';
+  const textMut     = t ? '#64748b' : '#334155';
+  const textMutHov  = t ? '#0f172a' : '#94a3b8';
+  const borderSub   = t ? 'rgba(0,140,180,0.08)' : 'rgba(0,217,255,0.08)';
+  const borderMed   = t ? 'rgba(0,140,180,0.2)'  : 'rgba(0,217,255,0.15)';
+  const techBg      = t ? 'rgba(228,234,248,0.8)' : 'rgba(17,22,51,0.8)';
+  const techBorder  = t ? 'rgba(0,119,170,0.18)'  : 'rgba(0,217,255,0.15)';
+  const techColor   = t ? '#334155' : '#94a3b8';
+  const techHovBorder = t ? 'rgba(0,119,170,0.5)' : 'rgba(0,217,255,0.5)';
+  const techHovColor  = t ? '#0f172a' : '#fff';
+  const breadColor  = t ? '#64748b' : '#334155';
+  const breadHov    = t ? '#0077aa' : '#00d9ff';
+  const divider     = t ? 'rgba(0,140,180,0.1)'  : 'rgba(0,217,255,0.08)';
+  const gridLine    = t ? 'rgba(0,140,180,0.04)' : 'rgba(0,217,255,0.04)';
+  const skeletonA   = t ? '#e8eef8' : '#111633';
+  const skeletonB   = t ? '#f0f4ff' : '#1a2347';
+  const emptyIcon   = t ? '#d1d9ee' : '#1e2747';
 
   const [project,   setProject]   = useState<Project | null>(null);
   const [related,   setRelated]   = useState<Project[]>([]);
@@ -58,11 +83,84 @@ export default function PortfolioDetailPage() {
     fetchProject();
   }, [slug]);
 
+  const sharedStyles = `
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500&family=Outfit:wght@300;400;500;600&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: ${bgPage};
+      color: ${textPri};
+      font-family: 'Outfit', sans-serif;
+      overflow-x: hidden;
+      transition: background 0.4s, color 0.4s;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image:
+        linear-gradient(${gridLine} 1px, transparent 1px),
+        linear-gradient(90deg, ${gridLine} 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+    .skeleton {
+      background: linear-gradient(90deg, ${skeletonA} 25%, ${skeletonB} 50%, ${skeletonA} 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: clamp(24px, 5vw, 48px);
+    }
+    @media (min-width: 768px)  { .detail-grid { grid-template-columns: 1fr 280px; } }
+    @media (min-width: 1024px) { .detail-grid { grid-template-columns: 1fr 320px; } }
+    @media (max-width: 767px) {
+      .detail-grid > div:last-child {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .detail-grid > div:last-child > a { grid-column: 1 / -1; }
+    }
+    @media (max-width: 479px) {
+      .detail-grid > div:last-child { grid-template-columns: 1fr; }
+    }
+    .related-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: clamp(12px, 3vw, 20px);
+    }
+    @media (min-width: 640px)  { .related-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (min-width: 1024px) { .related-grid { grid-template-columns: repeat(3,1fr); } }
+    .action-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px clamp(14px,3vw,24px);
+      font-family: 'DM Mono', monospace;
+      font-size: clamp(11px, 2.5vw, 12px);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      text-decoration: none; transition: all 0.3s;
+      white-space: nowrap;
+    }
+    .action-btn-primary {
+      background: linear-gradient(135deg, ${t ? 'rgba(0,119,170,0.1)' : 'rgba(0,217,255,0.12)'}, ${t ? 'rgba(124,58,237,0.1)' : 'rgba(124,58,237,0.12)'});
+      border: 1px solid ${cyber};
+      color: ${cyber};
+    }
+    .action-btn-primary:hover { background: ${cyber} !important; color: ${t ? '#ffffff' : '#0a0e27'} !important; box-shadow: 0 0 30px ${cyber}40; }
+    .action-btn-secondary {
+      border: 1px solid ${purple};
+      color: ${purple};
+      background: rgba(124,58,237,0.05);
+    }
+    .action-btn-secondary:hover { background: ${purple} !important; color: #fff !important; }
+  `;
+
   // ── Loading ──────────────────────────────────────────────
   if (isLoading) return (
     <>
-      <SharedStyles />
-      <div style={{ background: '#0a0e27', minHeight: '100vh', paddingTop: 64 }}>
+      <style>{sharedStyles}</style>
+      <div style={{ background: bgPage, minHeight: '100vh', paddingTop: 64 }}>
         <div style={{ height: 'clamp(200px,40vw,384px)' }} className="skeleton" />
         <div style={{ maxWidth: 1024, margin: '0 auto', padding: '0 clamp(16px,5vw,48px)' }}>
           <div style={{ height: 28, width: 180, marginTop: 32, marginBottom: 14 }} className="skeleton" />
@@ -76,35 +174,40 @@ export default function PortfolioDetailPage() {
   // ── 404 ──────────────────────────────────────────────────
   if (notFound || !project) return (
     <>
-      <SharedStyles />
-      <div style={{ background:'#0a0e27', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:16, fontFamily:'DM Mono, monospace', padding:24, textAlign:'center' }}>
-        <div style={{ fontSize:'clamp(2.5rem,10vw,4rem)', color:'#1e2747' }}>{'{ }'}</div>
-        <p style={{ color:'#334155', fontSize:14 }}>Project not found.</p>
-        <a href="/portfolio" style={{ color:cyber, fontSize:12, textDecoration:'none' }}>← Back to Portfolio</a>
+      <style>{sharedStyles}</style>
+      <div style={{ background: bgPage, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, fontFamily: 'DM Mono, monospace', padding: 24, textAlign: 'center' }}>
+        <div style={{ fontSize: 'clamp(2.5rem,10vw,4rem)', color: emptyIcon }}>{'{ }'}</div>
+        <p style={{ color: textMut, fontSize: 14 }}>Project not found.</p>
+        <a href="/portfolio" style={{ color: cyber, fontSize: 12, textDecoration: 'none' }}>← Back to Portfolio</a>
       </div>
     </>
   );
 
-  const publishedDate = new Date(project.createdAt).toLocaleDateString('en', { month:'long', year:'numeric' });
+  const publishedDate = new Date(project.createdAt).toLocaleDateString('en', { month: 'long', year: 'numeric' });
   const isLive        = Boolean(project.demoUrl);
 
   return (
     <>
-      <SharedStyles />
-      <div style={{ position:'relative', background:'#0a0e27', minHeight:'100vh', zIndex:1 }}>
+      <style>{sharedStyles}</style>
+      <div style={{ position: 'relative', background: bgPage, minHeight: '100vh', zIndex: 1 }}>
 
         {/* ── Hero Image ── */}
         {project.imagePath ? (
-          <div style={{ position:'relative', height:'clamp(200px,40vw,384px)', overflow:'hidden', marginTop:64 }}>
+          <div style={{ position: 'relative', height: 'clamp(200px,40vw,384px)', overflow: 'hidden', marginTop: 64 }}>
             <motion.img
               src={project.imagePath} alt={project.title}
-              initial={{ scale:1.1 }} animate={{ scale:1 }} transition={{ duration:0.8 }}
-              style={{ width:'100%', height:'100%', objectFit:'cover' }}
+              initial={{ scale: 1.1 }} animate={{ scale: 1 }} transition={{ duration: 0.8 }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
-            <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,#0a0e27 0%,rgba(10,14,39,0.6) 50%,transparent 100%)' }} />
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: t
+                ? 'linear-gradient(to top, rgba(240,244,255,0.92) 0%, rgba(240,244,255,0.5) 50%, transparent 100%)'
+                : 'linear-gradient(to top, #0a0e27 0%, rgba(10,14,39,0.6) 50%, transparent 100%)',
+            }} />
           </div>
         ) : (
-          <div style={{ height:80, borderBottom:'1px solid rgba(0,217,255,0.08)', marginTop:64 }} />
+          <div style={{ height: 80, borderBottom: `1px solid ${borderSub}`, marginTop: 64 }} />
         )}
 
         <div style={{
@@ -118,13 +221,17 @@ export default function PortfolioDetailPage() {
         }}>
 
           {/* ── Breadcrumb ── */}
-          <motion.nav initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.1 }}
-            style={{ display:'flex', alignItems:'center', gap:8, fontFamily:'DM Mono, monospace', fontSize:'clamp(10px,2.5vw,12px)', color:'#334155', marginBottom:20, flexWrap:'wrap' }}>
-            <BreadcrumbLink href="/">Home</BreadcrumbLink>
+          <motion.nav initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'DM Mono, monospace', fontSize: 'clamp(10px,2.5vw,12px)', color: breadColor, marginBottom: 20, flexWrap: 'wrap' }}>
+            <a href="/" style={{ color: breadColor, textDecoration: 'none', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.color = breadHov}
+              onMouseLeave={e => e.currentTarget.style.color = breadColor}>Home</a>
             <span>/</span>
-            <BreadcrumbLink href="/portfolio">Portfolio</BreadcrumbLink>
+            <a href="/portfolio" style={{ color: breadColor, textDecoration: 'none', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.color = breadHov}
+              onMouseLeave={e => e.currentTarget.style.color = breadColor}>Portfolio</a>
             <span>/</span>
-            <span style={{ color:'#64748b' }}>{project.title.length > 30 ? project.title.slice(0,30)+'…' : project.title}</span>
+            <span style={{ color: textMut }}>{project.title.length > 30 ? project.title.slice(0, 30) + '…' : project.title}</span>
           </motion.nav>
 
           {/* ── Main Grid ── */}
@@ -132,53 +239,52 @@ export default function PortfolioDetailPage() {
 
             {/* ── Left: Main Content ── */}
             <div>
-              <motion.div initial={{ opacity:0, y:24 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.5 }} style={{ marginBottom:'clamp(20px,5vw,32px)' }}>
+              <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+                style={{ marginBottom: 'clamp(20px,5vw,32px)' }}>
                 {project.categoryId && (
-                  <span style={{ display:'inline-block', fontFamily:'DM Mono, monospace', fontSize:11, border:`1px solid rgba(0,217,255,0.35)`, color:cyber, background:'rgba(0,217,255,0.05)', padding:'3px 10px', marginBottom:12, letterSpacing:'0.05em' }}>
+                  <span style={{ display: 'inline-block', fontFamily: 'DM Mono, monospace', fontSize: 11, border: `1px solid ${borderMed}`, color: cyber, background: t ? 'rgba(0,119,170,0.06)' : 'rgba(0,217,255,0.05)', padding: '3px 10px', marginBottom: 12, letterSpacing: '0.05em' }}>
                     {project.categoryId.name}
                   </span>
                 )}
-                <h1 style={{ fontFamily:'Syne, sans-serif', fontWeight:800, fontSize:'clamp(1.75rem,6vw,3.5rem)', color:'#fff', lineHeight:1.05, letterSpacing:'-0.02em', marginBottom:14 }}>
+                <h1 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 'clamp(1.75rem,6vw,3.5rem)', color: textPri, lineHeight: 1.05, letterSpacing: '-0.02em', marginBottom: 14 }}>
                   {project.title}
                 </h1>
                 {project.isFeatured && (
-                  <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontFamily:'DM Mono, monospace', fontSize:11, background:cyber, color:'#0a0e27', padding:'4px 12px', fontWeight:700, letterSpacing:'0.1em' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'DM Mono, monospace', fontSize: 11, background: cyber, color: t ? '#fff' : '#0a0e27', padding: '4px 12px', fontWeight: 700, letterSpacing: '0.1em' }}>
                     ★ FEATURED PROJECT
                   </span>
                 )}
               </motion.div>
 
               {/* Description Card */}
-              <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.5, delay:0.1 }}
-                style={{ background:'#111633', border:'1px solid rgba(0,217,255,0.08)', marginBottom:'clamp(20px,5vw,32px)' }}>
-                <div style={{ height:2, background:`linear-gradient(90deg,transparent,${cyber},transparent)` }} />
-                <div style={{ padding:'clamp(16px,4vw,28px)' }}>
-                  <h2 style={{ fontFamily:'Syne, sans-serif', fontSize:'clamp(15px,3vw,18px)', fontWeight:700, color:'#fff', marginBottom:14, display:'flex', alignItems:'center', gap:10 }}>
-                    <span style={{ width:3, height:20, background:cyber, display:'inline-block', flexShrink:0 }} />
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
+                style={{ background: bgCard, border: `1px solid ${borderSub}`, marginBottom: 'clamp(20px,5vw,32px)' }}>
+                <div style={{ height: 2, background: `linear-gradient(90deg,transparent,${cyber},transparent)` }} />
+                <div style={{ padding: 'clamp(16px,4vw,28px)' }}>
+                  <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(15px,3vw,18px)', fontWeight: 700, color: textPri, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ width: 3, height: 20, background: cyber, display: 'inline-block', flexShrink: 0 }} />
                     About This Project
                   </h2>
-                  <div style={{ color:'#64748b', lineHeight:1.75, fontFamily:'Outfit, sans-serif', fontSize:'clamp(13px,2.5vw,15px)', whiteSpace:'pre-line' }}>
+                  <div style={{ color: textSec, lineHeight: 1.75, fontFamily: 'Outfit, sans-serif', fontSize: 'clamp(13px,2.5vw,15px)', whiteSpace: 'pre-line' }}>
                     {project.description}
                   </div>
                 </div>
               </motion.div>
 
               {/* Action Buttons */}
-              <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.5, delay:0.2 }}
-                style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}
+                style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 {project.githubUrl && (
-                  <a href={project.githubUrl} target="_blank" rel="noreferrer"
-                    style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'10px clamp(14px,3vw,24px)', background:`linear-gradient(135deg,rgba(0,217,255,0.12),rgba(124,58,237,0.12))`, border:`1px solid ${cyber}`, color:cyber, fontFamily:'DM Mono, monospace', fontSize:'clamp(11px,2.5vw,12px)', letterSpacing:'0.1em', textTransform:'uppercase', textDecoration:'none', transition:'all 0.3s' }}
-                    onMouseEnter={e=>{ const el=e.currentTarget as HTMLElement; el.style.background=cyber; el.style.color='#0a0e27'; el.style.boxShadow=`0 0 30px ${cyber}40`; }}
-                    onMouseLeave={e=>{ const el=e.currentTarget as HTMLElement; el.style.background='linear-gradient(135deg,rgba(0,217,255,0.12),rgba(124,58,237,0.12))'; el.style.color=cyber; el.style.boxShadow='none'; }}>
+                  <a href={project.githubUrl} target="_blank" rel="noreferrer" className="action-btn action-btn-primary"
+                    onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = cyber; el.style.color = t ? '#ffffff' : '#0a0e27'; el.style.boxShadow = `0 0 30px ${cyber}40`; }}
+                    onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = ''; el.style.color = cyber; el.style.boxShadow = 'none'; }}>
                     <GitHubIcon /> View on GitHub
                   </a>
                 )}
                 {project.demoUrl && (
-                  <a href={project.demoUrl} target="_blank" rel="noreferrer"
-                    style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'10px clamp(14px,3vw,24px)', border:`1px solid ${purple}`, color:purple, fontFamily:'DM Mono, monospace', fontSize:'clamp(11px,2.5vw,12px)', letterSpacing:'0.1em', textTransform:'uppercase', textDecoration:'none', background:'rgba(124,58,237,0.05)', transition:'all 0.3s' }}
-                    onMouseEnter={e=>{ const el=e.currentTarget as HTMLElement; el.style.background=purple; el.style.color='#fff'; }}
-                    onMouseLeave={e=>{ const el=e.currentTarget as HTMLElement; el.style.background='rgba(124,58,237,0.05)'; el.style.color=purple; }}>
+                  <a href={project.demoUrl} target="_blank" rel="noreferrer" className="action-btn action-btn-secondary"
+                    onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = purple; el.style.color = '#fff'; }}
+                    onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'rgba(124,58,237,0.05)'; el.style.color = purple; }}>
                     <ExternalLinkIcon /> Live Demo
                   </a>
                 )}
@@ -186,19 +292,19 @@ export default function PortfolioDetailPage() {
             </div>
 
             {/* ── Sidebar ── */}
-            <div style={{ display:'flex', flexDirection:'column', gap:'clamp(14px,3vw,20px)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(14px,3vw,20px)' }}>
 
               {/* Tech Stack */}
               {project.techStack.length > 0 && (
-                <motion.div initial={{ opacity:0, x:24 }} animate={{ opacity:1, x:0 }} transition={{ duration:0.5, delay:0.15 }}
-                  style={{ background:'#111633', border:'1px solid rgba(0,217,255,0.08)', padding:'clamp(16px,4vw,24px)' }}>
-                  <h3 style={{ fontFamily:'DM Mono, monospace', fontSize:11, textTransform:'uppercase', letterSpacing:'0.2em', color:cyber, marginBottom:14 }}>Tech Stack</h3>
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.15 }}
+                  style={{ background: bgCard, border: `1px solid ${borderSub}`, padding: 'clamp(16px,4vw,24px)' }}>
+                  <h3 style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.2em', color: cyber, marginBottom: 14 }}>Tech Stack</h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {project.techStack.map(tech => (
                       <span key={tech}
-                        style={{ fontFamily:'DM Mono, monospace', fontSize:'clamp(10px,2vw,12px)', background:'rgba(17,22,51,0.8)', border:'1px solid rgba(0,217,255,0.15)', color:'#94a3b8', padding:'5px 10px', transition:'all 0.2s', cursor:'default' }}
-                        onMouseEnter={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(0,217,255,0.5)'; el.style.color='#fff'; }}
-                        onMouseLeave={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(0,217,255,0.15)'; el.style.color='#94a3b8'; }}>
+                        style={{ fontFamily: 'DM Mono, monospace', fontSize: 'clamp(10px,2vw,12px)', background: techBg, border: `1px solid ${techBorder}`, color: techColor, padding: '5px 10px', transition: 'all 0.2s', cursor: 'default' }}
+                        onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = techHovBorder; el.style.color = techHovColor; }}
+                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = techBorder; el.style.color = techColor; }}>
                         {tech}
                       </span>
                     ))}
@@ -207,28 +313,36 @@ export default function PortfolioDetailPage() {
               )}
 
               {/* Project Info */}
-              <motion.div initial={{ opacity:0, x:24 }} animate={{ opacity:1, x:0 }} transition={{ duration:0.5, delay:0.22 }}
-                style={{ background:'#111633', border:'1px solid rgba(0,217,255,0.08)', padding:'clamp(16px,4vw,24px)' }}>
-                <h3 style={{ fontFamily:'DM Mono, monospace', fontSize:11, textTransform:'uppercase', letterSpacing:'0.2em', color:cyber, marginBottom:14 }}>Project Info</h3>
-                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                  {project.categoryId && <InfoRow label="Category" value={project.categoryId.name} />}
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <span style={{ fontFamily:'DM Mono, monospace', fontSize:12, color:'#334155' }}>Status</span>
-                    <span style={{ display:'flex', alignItems:'center', gap:6, fontFamily:'DM Mono, monospace', fontSize:12, color: isLive ? green : '#60a5fa' }}>
-                      <span style={{ width:6, height:6, borderRadius:'50%', background: isLive ? green : '#60a5fa', animation:'blink 2s step-end infinite' }} />
+              <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.22 }}
+                style={{ background: bgCard, border: `1px solid ${borderSub}`, padding: 'clamp(16px,4vw,24px)' }}>
+                <h3 style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.2em', color: cyber, marginBottom: 14 }}>Project Info</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {project.categoryId && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: textMut, flexShrink: 0 }}>Category</span>
+                      <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: textSec, textAlign: 'right' }}>{project.categoryId.name}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: textMut }}>Status</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'DM Mono, monospace', fontSize: 12, color: isLive ? green : '#60a5fa' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: isLive ? green : '#60a5fa', animation: 'blink 2s step-end infinite' }} />
                       {isLive ? 'Live' : 'Completed'}
                     </span>
                   </div>
-                  <InfoRow label="Published" value={publishedDate} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: textMut, flexShrink: 0 }}>Published</span>
+                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: textSec, textAlign: 'right' }}>{publishedDate}</span>
+                  </div>
                 </div>
               </motion.div>
 
               {/* Back link */}
-              <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.3 }}>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
                 <a href="/portfolio"
-                  style={{ display:'inline-flex', alignItems:'center', gap:6, fontFamily:'DM Mono, monospace', fontSize:12, color:'#334155', textDecoration:'none', transition:'color 0.2s' }}
-                  onMouseEnter={e=>e.currentTarget.style.color=cyber}
-                  onMouseLeave={e=>e.currentTarget.style.color='#334155'}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'DM Mono, monospace', fontSize: 12, color: textMut, textDecoration: 'none', transition: 'color 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = cyber}
+                  onMouseLeave={e => e.currentTarget.style.color = textMut}>
                   ← Back to Portfolio
                 </a>
               </motion.div>
@@ -237,10 +351,10 @@ export default function PortfolioDetailPage() {
 
           {/* ── Related Projects ── */}
           {related.length > 0 && (
-            <motion.div initial={{ opacity:0, y:24 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} transition={{ duration:0.5 }}
-              style={{ marginTop:'clamp(48px,10vh,80px)', paddingTop:'clamp(28px,5vh,48px)', borderTop:'1px solid rgba(0,217,255,0.08)' }}>
-              <h2 style={{ fontFamily:'Syne, sans-serif', fontSize:'clamp(1.25rem,4vw,1.75rem)', fontWeight:700, color:'#fff', marginBottom:'clamp(20px,4vh,32px)' }}>
-                Related <span style={{ color:cyber }}>Projects</span>
+            <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
+              style={{ marginTop: 'clamp(48px,10vh,80px)', paddingTop: 'clamp(28px,5vh,48px)', borderTop: `1px solid ${divider}` }}>
+              <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(1.25rem,4vw,1.75rem)', fontWeight: 700, color: textPri, marginBottom: 'clamp(20px,4vh,32px)' }}>
+                Related <span style={{ color: cyber }}>Projects</span>
               </h2>
               <div className="related-grid">
                 {related.map((rel, i) => <ProjectCard key={rel._id} project={rel} index={i} />)}
@@ -250,26 +364,6 @@ export default function PortfolioDetailPage() {
         </div>
       </div>
     </>
-  );
-}
-
-// ── Sub-components ────────────────────────────────────────
-function BreadcrumbLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <a href={href} style={{ color:'#334155', textDecoration:'none', transition:'color 0.2s' }}
-      onMouseEnter={e=>e.currentTarget.style.color='#00d9ff'}
-      onMouseLeave={e=>e.currentTarget.style.color='#334155'}>
-      {children}
-    </a>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
-      <span style={{ fontFamily:'DM Mono, monospace', fontSize:12, color:'#334155', flexShrink:0 }}>{label}</span>
-      <span style={{ fontFamily:'DM Mono, monospace', fontSize:12, color:'#64748b', textAlign:'right' }}>{value}</span>
-    </div>
   );
 }
 
@@ -286,64 +380,5 @@ function ExternalLinkIcon() {
     <svg width={15} height={15} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
     </svg>
-  );
-}
-
-function SharedStyles() {
-  return (
-    <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500&family=Outfit:wght@300;400;500;600&display=swap');
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      body { background: #0a0e27; color: #e2e8f0; font-family: 'Outfit', sans-serif; overflow-x: hidden; }
-      body::before {
-        content: ''; position: fixed; inset: 0;
-        background-image: linear-gradient(rgba(0,217,255,0.04) 1px,transparent 1px), linear-gradient(90deg,rgba(0,217,255,0.04) 1px,transparent 1px);
-        background-size: 40px 40px; pointer-events: none; z-index: 0;
-      }
-      @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-      @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-      .skeleton { background:linear-gradient(90deg,#111633 25%,#1a2347 50%,#111633 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; }
-
-      /* ── Responsive Layout ── */
-
-      /* Main 2-col grid: sidebar stacks below on mobile */
-      .detail-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: clamp(24px, 5vw, 48px);
-      }
-      @media (min-width: 768px) {
-        .detail-grid { grid-template-columns: 1fr 280px; }
-      }
-      @media (min-width: 1024px) {
-        .detail-grid { grid-template-columns: 1fr 320px; }
-      }
-
-      /* On mobile: sidebar renders after main, but we want it visually compact */
-      @media (max-width: 767px) {
-        .detail-grid > div:last-child {
-          /* sidebar on mobile: 2-col mini grid for the cards */
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-        }
-        /* back link spans full width */
-        .detail-grid > div:last-child > a {
-          grid-column: 1 / -1;
-        }
-      }
-      @media (max-width: 479px) {
-        .detail-grid > div:last-child { grid-template-columns: 1fr; }
-      }
-
-      /* Related projects grid */
-      .related-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: clamp(12px, 3vw, 20px);
-      }
-      @media (min-width: 640px)  { .related-grid { grid-template-columns: repeat(2, 1fr); } }
-      @media (min-width: 1024px) { .related-grid { grid-template-columns: repeat(3, 1fr); } }
-    `}</style>
   );
 }
