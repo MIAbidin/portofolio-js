@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
     const projectsData = projects.map(p => ({
       id:               p._id.toString(),
       title:            p.title,
+      description:      pickText(p.description || '', p.description_id || ''),
       shortDescription: pickText(p.shortDescription || p.description?.replace(/<[^>]*>/g, '') || '', p.shortDescription_id || p.description_id || ''),
       category:         (p.categoryId as any)?.name || '',
       tech_stack:       p.techStack || [],
