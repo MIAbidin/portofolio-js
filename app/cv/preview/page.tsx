@@ -10,6 +10,8 @@ interface Project {
   title: string;
   description: string;
   description_id: string;
+  shortDescription: string;
+  shortDescription_id: string;
   techStack: string[];
   githubUrl?: string;
   demoUrl?: string;
@@ -372,7 +374,11 @@ function CVPreviewInner() {
               <section className="cv-section">
                 <h2 className="cv-section-title">{L.sections.projects}</h2>
                 {projects.slice(0, 5).map(project => {
-                  const desc = pickText(project.description || '', project.description_id || '', isID);
+                  const desc = pickText(
+                      project.shortDescription || project.description || '',
+                      project.shortDescription_id || project.description_id || '',
+                      isID
+                    );
                   return (
                     <div key={project._id} className="cv-entry">
                       <p className="cv-entry-title" style={{ marginBottom: '0.3rem' }}>{project.title}</p>
