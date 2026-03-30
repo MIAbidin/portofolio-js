@@ -163,10 +163,10 @@ function CVPreviewInner() {
     }));
 
   const certifications: Certification[] = [
-    { name: 'Introduction to Cybersecurity',       issuer: 'Cisco Networking Academy', year: '2024' },
-    { name: 'Networking Basics',                   issuer: 'Cisco Networking Academy', year: '2024' },
-    { name: 'Learn Machine Learning Development',  issuer: 'Dicoding Indonesia',       year: '2024' },
-    { name: 'Bootcamp Digital Talent Scholarship', issuer: 'Kominfo & DBS Foundation', year: '2023' },
+      { name: 'Networking & Cybersecurity Basic', issuer: 'Cisco Academy', year: '2024' },
+      { name: 'Front End & Back End Web', issuer: 'MSIB Batch 6', year: '2024' },
+      { name: 'Machine Learning Engineer', issuer: 'DBS Foundation Coding Camp', year: '2024' },
+      { name: 'Data Science', issuer: 'Dicoding Indonesia', year: '2025' },
   ];
 
   const hardSkills = skills.filter(s => s.category === 'hard').map(s => s.name);
