@@ -173,7 +173,7 @@ export function generateCvBuffer(data: CvPayload): Promise<Uint8Array> {
     const contactParts = [
       owner.email, owner.phone, owner.location,
       owner.linkedin ? owner.linkedin.replace(/https?:\/\/(www\.)?/g, '') : '',
-      'MIA.dev',
+      'miabidin.dev',
     ].filter(Boolean);
 
     if (contactParts.length) {
@@ -259,8 +259,9 @@ export function generateCvBuffer(data: CvPayload): Promise<Uint8Array> {
         doc.font(BODY_BOLD).fontSize(SZ_ENTRY_T).fillColor(BLACK)
           .text(proj.title || '', M, doc.y, { width: TW });
         doc.moveDown(0.15);
-        if (proj.description) {
-          para(proj.description.replace(/\n/g, ' ').trim(), { gap: 0.2 });
+        const desc = proj.shortDescription || proj.description || '';
+        if (desc) {
+          para(desc.replace(/\n/g, ' ').trim(), { gap: 0.2 });
         }
         const tech = proj.tech_stack || [];
         if (tech.length) {
