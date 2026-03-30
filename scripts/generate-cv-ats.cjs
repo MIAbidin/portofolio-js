@@ -177,7 +177,7 @@ const contactParts = [
   owner.phone,
   owner.location,
   owner.linkedin ? owner.linkedin.replace(/https?:\/\/(www\.)?/g, '') : '',
-  'MIA.dev',
+  'miabidin.dev',
 ].filter(Boolean);
 
 if (contactParts.length) {
@@ -294,8 +294,8 @@ if (projects.length) {
        .text(proj.title || '', M, doc.y, { width: TW });
     doc.moveDown(0.15);
 
-    if (proj.description) {
-      para(proj.description.replace(/\n/g, ' ').trim(), { gap: 0.2 });
+    if (proj.shortDescription) {
+      para(proj.shortDescription.replace(/\n/g, ' ').trim(), { gap: 0.2 });
     }
 
     const tech = proj.tech_stack || [];
