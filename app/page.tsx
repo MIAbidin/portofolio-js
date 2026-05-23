@@ -381,84 +381,374 @@ export default function HomePage() {
   if (!isDataLoaded) {
     return (
       <div style={{
-        position: 'fixed', inset: 0,
-        background: '#0a0e27',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
+        position: 'fixed',
+        inset: 0,
+        background: '#020510',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
         zIndex: 99999,
+        overflow: 'hidden',
         fontFamily: 'DM Mono, monospace',
       }}>
         <style>{`
-          @keyframes spin { to { transform: rotate(360deg); } }
-          @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-          @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-          @keyframes logoGlow { 0%,100%{box-shadow:0 0 8px rgba(0,217,255,0.3)} 50%{box-shadow:0 0 24px rgba(0,217,255,0.7)} }
-          .boot-line { animation: fadeUp 0.4s ease-out forwards; opacity: 0; }
+          @keyframes orbitA {
+            from { transform: rotateY(0deg) translateX(120px) rotateY(0deg); }
+            to   { transform: rotateY(360deg) translateX(120px) rotateY(-360deg); }
+          }
+          @keyframes orbitB {
+            from { transform: rotateX(60deg) rotateZ(0deg) translateX(80px) rotateZ(0deg) rotateX(-60deg); }
+            to   { transform: rotateX(60deg) rotateZ(360deg) translateX(80px) rotateZ(-360deg) rotateX(-60deg); }
+          }
+          @keyframes orbitC {
+            from { transform: rotateX(-40deg) rotateZ(0deg) translateX(155px) rotateZ(0deg) rotateX(40deg); }
+            to   { transform: rotateX(-40deg) rotateZ(-360deg) translateX(155px) rotateZ(360deg) rotateX(40deg); }
+          }
+          @keyframes planetPulse {
+            0%,100% { box-shadow: 0 0 40px rgba(0,217,255,0.6), 0 0 80px rgba(0,217,255,0.2), inset 0 0 30px rgba(0,100,180,0.8); }
+            50%      { box-shadow: 0 0 60px rgba(0,217,255,1), 0 0 120px rgba(0,217,255,0.4), inset 0 0 40px rgba(0,150,220,0.9); }
+          }
+          @keyframes ringRotateMain {
+            from { transform: rotateX(75deg) rotateZ(0deg); }
+            to   { transform: rotateX(75deg) rotateZ(360deg); }
+          }
+          @keyframes ringRotateMainRev {
+            from { transform: rotateX(75deg) rotateZ(0deg); }
+            to   { transform: rotateX(75deg) rotateZ(-360deg); }
+          }
+          @keyframes starTwinkle {
+            0%,100% { opacity: 0.2; transform: scale(1); }
+            50%      { opacity: 1;   transform: scale(1.8); }
+          }
+          @keyframes scanPulse {
+            0%   { top: -2px; opacity: 0; }
+            5%   { opacity: 0.7; }
+            95%  { opacity: 0.7; }
+            100% { top: 100%; opacity: 0; }
+          }
+          @keyframes glowText {
+            0%,100% { text-shadow: 0 0 10px rgba(0,217,255,0.5), 0 0 20px rgba(0,217,255,0.2); }
+            50%      { text-shadow: 0 0 20px rgba(0,217,255,1), 0 0 40px rgba(0,217,255,0.5), 0 0 60px rgba(0,217,255,0.2); }
+          }
+          @keyframes dataStream {
+            0%   { transform: translateY(100vh); opacity: 0; }
+            5%   { opacity: 0.8; }
+            95%  { opacity: 0.8; }
+            100% { transform: translateY(-600px); opacity: 0; }
+          }
+          @keyframes progressFill {
+            0%   { width: 0%; }
+            15%  { width: 12%; }
+            35%  { width: 35%; }
+            55%  { width: 58%; }
+            75%  { width: 78%; }
+            90%  { width: 92%; }
+            100% { width: 98%; }
+          }
+          @keyframes dotPop {
+            0%,80%,100% { transform: scale(0); opacity: 0; }
+            40%          { transform: scale(1); opacity: 1; }
+          }
+          @keyframes fadeInUp {
+            from { opacity:0; transform:translateY(24px); }
+            to   { opacity:1; transform:translateY(0); }
+          }
+          @keyframes hexSpin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+          }
+          @keyframes hexSpinRev {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(-360deg); }
+          }
+          @keyframes nebula {
+            0%,100% { transform: scale(1) rotate(0deg); opacity: 0.18; }
+            33%      { transform: scale(1.15) rotate(120deg); opacity: 0.28; }
+            66%      { transform: scale(0.92) rotate(240deg); opacity: 0.2; }
+          }
+          @keyframes warpPulse {
+            0%,100% { opacity:0; transform: scaleX(0); }
+            50%      { opacity:0.5; transform: scaleX(1); }
+          }
+          @keyframes cornerGlow {
+            0%,100% { opacity: 0.4; }
+            50%      { opacity: 1; }
+          }
+          .ls-star { position:absolute; border-radius:50%; animation: starTwinkle linear infinite; }
+          .ls-data-col { position:absolute; font-family:'DM Mono',monospace; font-size:9px; line-height:1.5em; white-space:pre; animation: dataStream linear infinite; pointer-events:none; user-select:none; }
+          .ls-scan { position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg, transparent, rgba(0,217,255,0.7) 30%, rgba(0,217,255,0.9) 50%, rgba(0,217,255,0.7) 70%, transparent); animation:scanPulse 4s ease-in-out infinite; pointer-events:none; z-index:5; }
         `}</style>
 
-        {/* ── Navbar-matching logo ── */}
-        <div style={{ marginBottom: 40, textAlign: 'center', animation: 'fadeUp 0.5s ease-out forwards' }}>
-          {/* Same logo mark as Navbar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 4 }}>
-            <div style={{
-              width: 38, height: 38,
-              border: '1px solid #00d9ff',
-              position: 'relative',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              animation: 'logoGlow 2s ease-in-out infinite',
-            }}>
-              <div style={{ width: 18, height: 18, background: '#00d9ff' }} />
-              {/* Corner accents — same as Navbar */}
-              <div style={{ position: 'absolute', top: -1, left: -1,   width: 9, height: 9, borderTop:    '1px solid #00d9ff', borderLeft:  '1px solid #00d9ff' }} />
-              <div style={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderBottom: '1px solid #00d9ff', borderRight: '1px solid #00d9ff' }} />
+        {/* ── Nebula background ── */}
+        <div style={{ position:'absolute', inset:0, overflow:'hidden', pointerEvents:'none' }}>
+          <div style={{ position:'absolute', top:'5%', left:'3%', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle, rgba(0,40,120,0.5) 0%, transparent 70%)', animation:'nebula 22s ease-in-out infinite' }} />
+          <div style={{ position:'absolute', bottom:'10%', right:'5%', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(50,0,130,0.35) 0%, transparent 70%)', animation:'nebula 28s ease-in-out infinite reverse' }} />
+          <div style={{ position:'absolute', top:'35%', right:'15%', width:350, height:350, borderRadius:'50%', background:'radial-gradient(circle, rgba(0,80,160,0.25) 0%, transparent 70%)', animation:'nebula 18s ease-in-out infinite 7s' }} />
+          <div style={{ position:'absolute', top:'60%', left:'20%', width:280, height:280, borderRadius:'50%', background:'radial-gradient(circle, rgba(80,0,100,0.2) 0%, transparent 70%)', animation:'nebula 14s ease-in-out infinite 3s' }} />
+        </div>
+
+        {/* ── Starfield ── */}
+        <div style={{ position:'absolute', inset:0, pointerEvents:'none' }}>
+          {Array.from({length:150}).map((_,i) => {
+            const size = Math.random() * 2.8 + 0.3;
+            const palette = ['#ffffff','#00d9ff','#a78bfa','#60a5fa','#34d399','#fbbf24'];
+            const color = palette[Math.floor(Math.random() * palette.length)];
+            return (
+              <div key={i} className="ls-star" style={{
+                left: `${Math.random()*100}%`,
+                top:  `${Math.random()*100}%`,
+                width: size, height: size,
+                background: color,
+                animationDuration: `${1.5 + Math.random()*4}s`,
+                animationDelay: `${Math.random()*6}s`,
+                opacity: Math.random()*0.6 + 0.1,
+                boxShadow: Math.random() > 0.8 ? `0 0 ${size*3}px ${color}` : 'none',
+              }} />
+            );
+          })}
+        </div>
+
+        {/* ── Matrix data columns ── */}
+        <div style={{ position:'absolute', inset:0, overflow:'hidden', pointerEvents:'none' }}>
+          {Array.from({length:10}).map((_,i) => {
+            const chars = '01アイウエオカキクケコ</>{}[]!@#$%^&*;:'.split('');
+            const col = Array.from({length:25}).map(() => chars[Math.floor(Math.random()*chars.length)]).join('\n');
+            const colors = ['rgba(0,217,255,', 'rgba(167,139,250,', 'rgba(16,185,129,'];
+            const c = colors[i % colors.length];
+            return (
+              <div key={i} className="ls-data-col" style={{
+                left: `${5 + i * 9.5}%`,
+                bottom: 0,
+                color: `${c}0.6)`,
+                animationDuration: `${5 + i * 0.6}s`,
+                animationDelay: `${i * 0.35}s`,
+              }}>{col}</div>
+            );
+          })}
+        </div>
+
+        {/* ── Scan line ── */}
+        <div className="ls-scan" />
+
+        {/* ── 3D Orbital System ── */}
+        <div style={{
+          position: 'relative',
+          width: 340, height: 340,
+          perspective: '700px',
+          perspectiveOrigin: '50% 40%',
+          marginBottom: 36,
+          animation: 'fadeInUp 0.9s cubic-bezier(0.16,1,0.3,1)',
+          transformStyle: 'preserve-3d',
+        }}>
+
+          {/* Outer orbit path C */}
+          <div style={{
+            position:'absolute', top:'50%', left:'50%',
+            width:310, height:310, marginLeft:-155, marginTop:-155,
+            border:'1px solid rgba(167,139,250,0.12)',
+            borderRadius:'50%',
+            transform:'rotateX(75deg)',
+            transformStyle:'preserve-3d',
+          }}>
+            {/* Satellite C */}
+            <div style={{ animation:'orbitC 10s linear infinite', position:'absolute', top:'50%', left:'50%', width:12, height:12, marginLeft:-6, marginTop:-6 }}>
+              <div style={{ width:12, height:12, borderRadius:'50%', background:'linear-gradient(135deg, #a78bfa, #6d28d9)', boxShadow:'0 0 12px rgba(167,139,250,0.9), 0 0 24px rgba(167,139,250,0.4)' }} />
             </div>
-            <span style={{
-              fontFamily: 'Syne, sans-serif',
-              fontWeight: 700,
-              fontSize: 24,
-              color: '#ffffff',
-              letterSpacing: '-0.02em',
+          </div>
+
+          {/* Mid orbit path A */}
+          <div style={{
+            position:'absolute', top:'50%', left:'50%',
+            width:240, height:240, marginLeft:-120, marginTop:-120,
+            border:'1px solid rgba(0,217,255,0.18)',
+            borderRadius:'50%',
+            transform:'rotateX(75deg)',
+            transformStyle:'preserve-3d',
+          }}>
+            {/* Satellite A */}
+            <div style={{ animation:'orbitA 5s linear infinite', position:'absolute', top:'50%', left:'50%', width:16, height:16, marginLeft:-8, marginTop:-8 }}>
+              <div style={{ width:16, height:16, borderRadius:'50%', background:'linear-gradient(135deg, #00d9ff, #006a8a)', boxShadow:'0 0 14px rgba(0,217,255,1), 0 0 28px rgba(0,217,255,0.5)' }} />
+            </div>
+          </div>
+
+          {/* Inner orbit path B */}
+          <div style={{
+            position:'absolute', top:'50%', left:'50%',
+            width:160, height:160, marginLeft:-80, marginTop:-80,
+            border:'1px solid rgba(16,185,129,0.18)',
+            borderRadius:'50%',
+            transform:'rotateX(75deg)',
+            transformStyle:'preserve-3d',
+          }}>
+            {/* Satellite B */}
+            <div style={{ animation:'orbitB 3s linear infinite', position:'absolute', top:'50%', left:'50%', width:10, height:10, marginLeft:-5, marginTop:-5 }}>
+              <div style={{ width:10, height:10, borderRadius:'50%', background:'linear-gradient(135deg, #10b981, #065f46)', boxShadow:'0 0 10px rgba(16,185,129,1), 0 0 20px rgba(16,185,129,0.5)' }} />
+            </div>
+          </div>
+
+          {/* Saturn ring */}
+          <div style={{
+            position:'absolute', top:'50%', left:'50%',
+            width:110, height:110, marginLeft:-55, marginTop:-55,
+            border:'4px solid rgba(0,217,255,0.15)',
+            borderRadius:'50%',
+            transform:'rotateX(75deg)',
+            animation:'ringRotateMain 12s linear infinite',
+            boxShadow:'0 0 20px rgba(0,217,255,0.08), inset 0 0 20px rgba(0,217,255,0.05)',
+          }} />
+          <div style={{
+            position:'absolute', top:'50%', left:'50%',
+            width:90, height:90, marginLeft:-45, marginTop:-45,
+            border:'1px solid rgba(0,217,255,0.1)',
+            borderRadius:'50%',
+            transform:'rotateX(75deg)',
+            animation:'ringRotateMainRev 10s linear infinite',
+          }} />
+
+          {/* ── Central Planet ── */}
+          <div style={{
+            position:'absolute', top:'50%', left:'50%',
+            width:72, height:72, marginLeft:-36, marginTop:-36,
+            borderRadius:'50%',
+            background:'radial-gradient(circle at 32% 30%, #1eb8e0 0%, #0a6090 35%, #021525 80%, #010a14 100%)',
+            animation:'planetPulse 3s ease-in-out infinite',
+            overflow:'hidden',
+            zIndex:10,
+          }}>
+            {/* Atmosphere shimmer bands */}
+            <div style={{ position:'absolute', top:'18%', left:'8%', width:'84%', height:'14%', background:'rgba(0,200,240,0.25)', borderRadius:'50%', filter:'blur(3px)' }} />
+            <div style={{ position:'absolute', top:'42%', left:'4%', width:'92%', height:'10%', background:'rgba(0,120,180,0.3)', borderRadius:'50%', filter:'blur(2px)' }} />
+            <div style={{ position:'absolute', top:'65%', left:'15%', width:'70%', height:'8%', background:'rgba(0,80,140,0.2)', borderRadius:'50%', filter:'blur(2px)' }} />
+            {/* Brand initials */}
+            <div style={{
+              position:'absolute', inset:0,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              fontFamily:'Syne, sans-serif', fontWeight:800, fontSize:17,
+              color:'rgba(255,255,255,0.92)',
+              textShadow:'0 0 12px rgba(0,217,255,0.9)',
+              letterSpacing:'-0.03em',
             }}>
-              {s.brand_initials || 'MIA'}<span style={{ color: '#00d9ff' }}>{s.brand_suffix || '.Dev'}</span>
-            </span>
+              {s.brand_initials || 'MIA'}
+            </div>
+          </div>
+
+          {/* Decorative concentric rings */}
+          {[400, 360, 320].map((size, i) => (
+            <div key={i} style={{
+              position:'absolute', top:'50%', left:'50%',
+              width:size, height:size,
+              marginLeft:-size/2, marginTop:-size/2,
+              border:`1px solid rgba(0,217,255,${0.04 - i*0.01})`,
+              borderRadius:'50%',
+              pointerEvents:'none',
+              animation:`${i%2===0 ? 'hexSpin' : 'hexSpinRev'} ${30+i*12}s linear infinite`,
+            }} />
+          ))}
+        </div>
+
+        {/* ── Text + progress ── */}
+        <div style={{
+          textAlign: 'center',
+          animation: 'fadeInUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.25s both',
+          position: 'relative', zIndex: 10,
+          padding: '0 24px',
+        }}>
+          {/* Brand name */}
+          <div style={{
+            fontFamily: 'Syne, sans-serif',
+            fontWeight: 800,
+            fontSize: 'clamp(24px, 5vw, 34px)',
+            color: '#fff',
+            letterSpacing: '-0.025em',
+            lineHeight: 1,
+            animation: 'glowText 3.5s ease-in-out infinite',
+          }}>
+            {s.brand_initials || 'MIA'}<span style={{ color:'#00d9ff' }}>{s.brand_suffix || '.Dev'}</span>
+          </div>
+
+          {/* Progress track */}
+          <div style={{
+            width: 'clamp(220px, 45vw, 340px)',
+            margin: '22px auto 10px',
+            position: 'relative',
+          }}>
+            {/* Track bg */}
+            <div style={{
+              height: 2,
+              background: 'rgba(0,217,255,0.08)',
+              borderRadius: 2,
+              overflow: 'hidden',
+              position: 'relative',
+            }}>
+              <div style={{
+                position:'absolute', top:0, left:0, height:'100%',
+                background: 'linear-gradient(90deg, rgba(0,217,255,0.4), #00d9ff 80%, rgba(0,217,255,0.6))',
+                animation: 'progressFill 3s cubic-bezier(0.4,0,0.2,1) forwards',
+                boxShadow: '0 0 10px rgba(0,217,255,0.9)',
+                borderRadius: 2,
+              }} />
+            </div>
+            {/* Glow beneath */}
+            <div style={{
+              height: 8,
+              marginTop: -5,
+              background: 'radial-gradient(ellipse at 50% 0%, rgba(0,217,255,0.25) 0%, transparent 70%)',
+              animation: 'progressFill 3s cubic-bezier(0.4,0,0.2,1) forwards',
+              filter: 'blur(4px)',
+            }} />
+          </div>
+
+          {/* Pulse dots */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:7, marginTop:2 }}>
+            {[0,1,2,3,4].map(i => (
+              <div key={i} style={{
+                width: i === 2 ? 10 : 5,
+                height: i === 2 ? 10 : 5,
+                borderRadius: '50%',
+                background: i === 2 ? '#00d9ff' : `rgba(0,217,255,${0.25 + i*0.05})`,
+                animation: 'dotPop 1.6s ease-in-out infinite',
+                animationDelay: `${i * 0.18}s`,
+                boxShadow: i === 2 ? '0 0 10px rgba(0,217,255,0.9)' : 'none',
+              }} />
+            ))}
           </div>
         </div>
 
-        {/* Spinner */}
-        <div style={{
-          width: 40, height: 40,
-          border: '2px solid rgba(0,217,255,0.1)',
-          borderTop: '2px solid #00d9ff',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
-          marginBottom: 32,
-        }} />
+        {/* ── Corner HUD brackets ── */}
+        {[
+          { top:16, left:16, borderTop:'1px solid', borderLeft:'1px solid' },
+          { top:16, right:16, borderTop:'1px solid', borderRight:'1px solid', left:'auto' },
+          { bottom:16, left:16, borderBottom:'1px solid', borderLeft:'1px solid', top:'auto' },
+          { bottom:16, right:16, borderBottom:'1px solid', borderRight:'1px solid', top:'auto', left:'auto' },
+        ].map((s2, i) => (
+          <div key={i} style={{
+            position:'absolute',
+            ...s2,
+            width:32, height:32,
+            borderColor:'rgba(0,217,255,0.4)',
+            animation:`cornerGlow 2s ease-in-out ${i*0.5}s infinite`,
+          } as React.CSSProperties} />
+        ))}
 
-        {/* Boot lines */}
-        <div style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {[
-            { text: '> Connecting to database...', delay: '0s',   color: '#475569' },
-            { text: '> Loading portfolio data...',  delay: '0.3s', color: '#475569' },
-            { text: '> Initializing systems...',    delay: '0.6s', color: '#475569' },
-          ].map((line, i) => (
-            <div key={i} className="boot-line" style={{
-              fontSize: 12, color: line.color,
-              letterSpacing: '0.05em',
-              animationDelay: line.delay,
-            }}>
-              {line.text}
-            </div>
+        {/* ── Warp speed lines (bottom) ── */}
+        <div style={{
+          position:'absolute', bottom:50, left:0, right:0,
+          height:30,
+          overflow:'hidden',
+          pointerEvents:'none',
+          display:'flex', flexDirection:'column', gap:8,
+          justifyContent:'center',
+          opacity:0.5,
+        }}>
+          {[0.7,1,0.5].map((op,i) => (
+            <div key={i} style={{
+              height:1,
+              background:`linear-gradient(90deg, transparent 0%, rgba(0,217,255,${op}) 40%, rgba(0,217,255,${op*1.4}) 60%, transparent 100%)`,
+              animation:`warpPulse ${1.5+i*0.4}s ease-in-out ${i*0.2}s infinite`,
+              transformOrigin:'center',
+            }} />
           ))}
-          <div className="boot-line" style={{
-            fontSize: 12, color: '#00d9ff',
-            letterSpacing: '0.05em',
-            animationDelay: '0.9s',
-            animation: 'fadeUp 0.4s 0.9s ease-out forwards, pulse 1.5s 1.3s ease-in-out infinite',
-            opacity: 0,
-          }}>
-            {'> '}
-            <span style={{ animation: 'pulse 1s ease-in-out infinite' }}>▋</span>
-          </div>
         </div>
       </div>
     );
